@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
-project(CS5814_Final_Project C)
+project(CS5234_Final_Project LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_FOUND)
@@ -11,5 +12,5 @@ if (OpenMP_FOUND)
 endif()
 
 add_executable(kmeans kmeans.c)
-add_executable(nqueens_branch nqueens_branch.c)
+add_executable(nqueens_branch nqueens_branch.cpp)
 add_executable(nqueens_backtrack nqueens_backtrack.c)
