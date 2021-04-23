@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,10 +23,10 @@ uint32_t accept(const struct State* p, const struct Candidate* c) {
 uint32_t reject(const struct State* p, const struct Candidate* c) {
     uint32_t diag_ur = c->row + c->col;
     uint32_t diag_ul = c->row + queens - c->col;
-    uint32_t ret = (p->rows & (1 << c->row));
-    ret += (p->cols & (1 << c->col));
-    ret += (p->diag_ul & (1 << diag_ul));
-    ret += (p->diag_ur & (1 << diag_ur));
+    uint32_t ret = (p->rows & (1U << c->row));
+    ret += (p->cols & (1U << c->col));
+    ret += (p->diag_ul & (1ULL << diag_ul));
+    ret += (p->diag_ur & (1ULL << diag_ur));
     return ret;
 }
 
@@ -65,12 +66,15 @@ int main(int argc, char **argv) {
 //          backtrack(s)
 //          s ← next(P, s)
 
+    double wtime = omp_get_wtime();
     struct State P = {0};
     uint64_t hits = 0;
+    #pragma omp parallel for default(none) shared(P, queens) reduction(+:hits) schedule(dynamic)
     for (int32_t i = 0; i < queens; ++i) {
         struct Candidate c = {i, 0};
         hits += backtrack(&P, &c);
     }
-    printf("Discovered %llu solutions.\n", (unsigned long long)hits);
+    wtime = omp_get_wtime() - wtime;
+    printf("Discovered %llu solutions in %f s.\n", (unsigned long long)hits, wtime);
     return 0;
 }
