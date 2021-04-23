@@ -11,37 +11,25 @@ class SearchSpaceBase {
 protected:
     [[nodiscard]] virtual bool accept(const TWork&) const = 0;
     [[nodiscard]] virtual bool reject(const TWork&) const = 0;
+    [[nodiscard]] virtual bool accepted(const TWork&) = 0;
     virtual bool dequeue_work(TWork&) = 0;
     virtual void update_work(TWork&) const = 0;
     virtual void produce_children(TWork) = 0;  // TODO: return a range instead
-    virtual void initialize_queues(int threads) = 0;
 public:
     virtual bool enqueue_work(TWork) = 0;
-    bool run(std::function<void(const TWork&)> accepted) {
+    bool run() {
         TWork work;
-        std::vector<bool> done_signals;
-        #pragma omp parallel default(none) private(work) shared(accepted, done_signals)
+        auto still_working = true;
+        #pragma omp parallel default(none) private(work) shared(still_working)
         {
-            #pragma omp single
-            {
-                initialize_queues(omp_get_num_threads());
-                done_signals.resize(omp_get_num_threads());
-            }
-            while (true) {
+            while (still_working) {
                 auto success = dequeue_work(work);
                 if (!success) {
-                    done_signals[omp_get_thread_num()] = true;
-                    auto all_done = true;
-                    for (auto signal: done_signals)
-                        if (!signal) { all_done = false; break; }
-                    if (all_done)
-                        break;
-                    continue;
+                    break; // this isn't perfect; if you hit a bottleneck your threads will exit
                 }
-                done_signals[omp_get_thread_num()] = false;
                 if (reject(work)) continue;
                 if (accept(work)) {
-                    accepted(work);
+                    still_working = !accepted(work);
                     if constexpr(acceptedHaveNoChildren) continue;
                 }
                 update_work(work);
@@ -54,39 +42,23 @@ public:
 
 template <typename TWork, bool acceptedHaveNoChildren=true>
 class BacktrackerBase : public SearchSpaceBase<TWork, acceptedHaveNoChildren> {
-    //std::queue<TWork> _queue;
-    //boost::lockfree::queue<TWork> _queue;
+    std::queue<TWork> _queue;
 protected:
-    std::vector<std::queue<TWork>> _queues;
-    std::vector<omp_lock_t> _locks;
-
-    void initialize_queues(int threads) override {
-        _queues.resize(threads);
-        _locks.resize(threads);
-    }
-
     bool dequeue_work(TWork& work) override {
-        auto rank = omp_get_thread_num();
-        omp_set_lock(&_locks[rank]);
-        bool success = false;
-//        #pragma omp critical
-        if (!_queues[rank].empty()) {
-            work = _queues[rank].front();
-            _queues[rank].pop();
+        bool success;
+        #pragma omp critical
+        if (!_queue.empty()) {
+            work = _queue.front();
+            _queue.pop();
             success = true;
         }
-        omp_unset_lock(&_locks[rank]);
+        else success = false;
         return success;
     }
 public:
-    BacktrackerBase(): _queues(1), _locks(1) {}
-
     bool enqueue_work(TWork work) override {
-        //#pragma omp critical
-        auto rank = omp_get_thread_num();
-        omp_set_lock(&_locks[rank]);
-        _queues[rank].push(work);
-        omp_unset_lock(&_locks[rank]);
+        #pragma omp critical
+        _queue.push(work);
         return true;
     }
 };
@@ -102,6 +74,7 @@ struct Work {
 uint32_t queens;
 
 class NQueensBacktracker: public BacktrackerBase<Work> {
+    uint64_t hits = 0;
 protected:
     void update_work(Work& work) const override {
         work.rows |= (1U << work.row);
@@ -121,6 +94,7 @@ protected:
     [[nodiscard]] bool accept(const Work& work) const override {
         return work.col == queens - 1;
     }
+
     [[nodiscard]] bool reject(const Work& work) const override {
         uint32_t diag_ur = work.row + work.col;
         uint32_t diag_ul = work.row + queens - work.col;
@@ -130,15 +104,15 @@ protected:
         ret += (work.diag_ur & (1ULL << diag_ur));
         return bool(ret);
     }
-public:
-    bool enqueue_work(Work work) override {
-        //#pragma omp critical
-        auto idx = work.row % _locks.size();
-        omp_set_lock(&_locks[idx]);
-        _queues[idx].push(work);
-        omp_unset_lock(&_locks[idx]);
-        return true;
+
+    [[nodiscard]] bool accepted(const Work& work) override {
+        #pragma omp atomic
+        hits++;
+        return false;
     }
+
+public:
+    [[nodiscard]] uint64_t hit_count() const { return hits; }
 };
 
 int main(int argc, char **argv) {
@@ -153,7 +127,6 @@ int main(int argc, char **argv) {
     }
 
     double wtime = omp_get_wtime();
-    std::atomic<uint64_t> hits(0);
 
     NQueensBacktracker tracker;
     Work work = {0};
@@ -161,12 +134,8 @@ int main(int argc, char **argv) {
         work.row = i;
         tracker.enqueue_work(work);
     }
-
-    tracker.run([&hits](const Work& work){
-        ++hits;
-    });
-
+    tracker.run();
     wtime = omp_get_wtime() - wtime;
-    printf("Discovered %llu solutions in %f s.\n", (unsigned long long)hits, wtime);
+    printf("Discovered %llu solutions in %f s.\n", (unsigned long long)tracker.hit_count(), wtime);
     return 0;
 }
