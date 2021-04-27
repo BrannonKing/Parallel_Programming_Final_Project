@@ -7,3 +7,7 @@
 .history
 .idea
 *.o
+bin
+/build/
+/gitignore/
+Makefile
