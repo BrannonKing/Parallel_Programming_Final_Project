@@ -3,3 +3,6 @@
 /cmake-build-debug/
 /cmake-build-release/
 /cmake-build-relwithdebinfo/
+.vscode
+.history
+.idea
