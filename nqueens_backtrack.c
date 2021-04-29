@@ -4,44 +4,88 @@
 #include <string.h>
 #include <stdint.h>
 
-uint32_t queens;
+int32_t queens;
 
-struct State {
+typedef struct {
     uint64_t diag_ur;
     uint64_t diag_ul;
     uint32_t rows;
     uint32_t cols;
-};
+} State;
 
-struct Candidate {
-    uint8_t row, col;
-};
-
-uint32_t accept(const struct State* p, const struct Candidate* c) {
-    return c->col == queens - 1;
+uint32_t accept(const State* p, int32_t col) {
+    return col == queens - 1;
 }
-uint32_t reject(const struct State* p, const struct Candidate* c) {
-    uint32_t diag_ur = c->row + c->col;
-    uint32_t diag_ul = c->row + queens - c->col;
-    uint32_t ret = (p->rows & (1U << c->row));
-    ret += (p->cols & (1U << c->col));
+uint32_t reject(const State* p, int32_t col, int32_t row) {
+    int32_t diag_ur = row + col;
+    int32_t diag_ul = row + queens - col;
+    uint32_t ret = (p->rows & (1U << row));
+    ret += (p->cols & (1U << col));
     ret += (p->diag_ul & (1ULL << diag_ul));
     ret += (p->diag_ur & (1ULL << diag_ur));
     return ret;
 }
 
-uint64_t backtrack(const struct State* p, const struct Candidate* c) {
-    if (reject(p, c)) return 0;
-    if (accept(p, c)) return 1;
-    struct State pi = *p;
-    pi.rows |= (1U << c->row);
-    pi.cols |= (1U << c->col);
-    pi.diag_ur |= (1ULL << (c->row + c->col));
-    pi.diag_ul |= (1ULL << (c->row + queens - c->col));
+void update_state(State* p, int32_t col, int32_t row) {
+    p->rows |= (1U << row);
+    p->cols |= (1U << col);
+    p->diag_ur |= (1ULL << (row + col));
+    p->diag_ul |= (1ULL << (row + queens - col));
+}
+
+void reverse_state(State* p, int32_t col, int32_t row) {
+    p->rows &= ~(1U << row);
+    p->cols &= ~(1U << col);
+    p->diag_ur &= ~(1ULL << (row + col));
+    p->diag_ul &= ~(1ULL << (row + queens - col));
+}
+
+uint64_t backtrack_unwind(State* p, int32_t col) {
+    uint64_t hits = 0;
+    for (int32_t i5 = 0; i5 < queens; ++i5) {
+        if (reject(p, col, i5)) continue;
+        update_state(p, col, i5);
+        for (int32_t i4 = 0; i4 < queens; ++i4) {
+            if (reject(p, col + 1, i4)) continue;
+            update_state(p, col + 1, i4);
+            for (int32_t i3 = 0; i3 < queens; ++i3) {
+                if (reject(p, col + 2, i3)) continue;
+                update_state(p, col + 2, i3);
+                for (int32_t i2 = 0; i2 < queens; ++i2) {
+                    if (reject(p, col + 3, i2)) continue;
+                    update_state(p, col + 3, i2);
+                    for (int32_t i1 = 0; i1 < queens; ++i1) {
+                        if (reject(p, col + 4, i1)) continue;
+                        update_state(p, col + 4, i1);
+                        #pragma omp simd
+                        for (int32_t i0 = 0; i0 < queens; ++i0) {
+                            if (reject(p, col + 5, i0)) continue;
+                            ++hits;
+                        }
+                        reverse_state(p, col + 4, i1);
+                    }
+                    reverse_state(p, col + 3, i2);
+                }
+                reverse_state(p, col + 2, i3);
+            }
+            reverse_state(p, col + 1, i4);
+        }
+        reverse_state(p, col, i5);
+    }
+    return hits;
+}
+
+uint64_t backtrack(const State* p, int32_t col, int32_t row) {
+    if (reject(p, col, row)) return 0;
+    if (accept(p, col)) return 1;
+    State pi = *p;
+    update_state(&pi, col, row);
+    if (queens - col == 7) {
+        return backtrack_unwind(&pi, col+1);
+    }
     uint64_t hits = 0;
     for (int32_t i = 0; i < queens; ++i) {
-        struct Candidate ci = {i, c->col + 1};
-        hits += backtrack(&pi, &ci);
+        hits += backtrack(&pi, col + 1, i);
     }
     return hits;
 }
@@ -51,7 +95,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Invalid parameters. Usage: nqueens <queens>");
         return 1;
     }
-    queens = strtoul(argv[1], NULL, 10);
+    queens = atoi(argv[1]);
     if (queens <= 0 || queens > 32) {
         fprintf(stderr, "Invalid queens count. Number expected from 1 to 32.");
         return 2;
@@ -67,12 +111,18 @@ int main(int argc, char **argv) {
 //          s ← next(P, s)
 
     double wtime = omp_get_wtime();
-    struct State P = {0};
     uint64_t hits = 0;
-    #pragma omp parallel for default(none) shared(P, queens) reduction(+:hits) schedule(dynamic)
+    #pragma omp parallel for default(none) shared(queens) reduction(+:hits) schedule(dynamic) collapse(3)
     for (int32_t i = 0; i < queens; ++i) {
-        struct Candidate c = {i, 0};
-        hits += backtrack(&P, &c);
+        for (int32_t j = 0; j < queens; ++j) {
+            for (int32_t k = 0; k < queens; ++k) {
+                if (j >= i - 1 && j <= i + 1) continue;
+                State p = {0};
+                update_state(&p, 0, i);
+                update_state(&p, 1, j);
+                hits += backtrack(&p, 2, k);
+            }
+        }
     }
     wtime = omp_get_wtime() - wtime;
     printf("Discovered %llu solutions in %f s.\n", (unsigned long long)hits, wtime);

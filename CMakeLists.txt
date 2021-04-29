@@ -11,6 +11,13 @@ if (OpenMP_FOUND)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
+# try this on Xeon:
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -mtune=native -ffast-math" )
+
+#set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+
+#add_executable(kmeans kmeans.c kmeans_clustering.c rmse.c)
 add_executable(kmeans kmeans.c)
+target_link_libraries(kmeans PRIVATE m)
 add_executable(nqueens_branch nqueens_branch.cpp)
 add_executable(nqueens_backtrack nqueens_backtrack.c)
