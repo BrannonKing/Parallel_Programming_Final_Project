@@ -16,10 +16,10 @@ typedef struct {
 uint32_t accept(const State* p, int32_t col) {
     return col == queens - 1;
 }
-uint32_t reject(const State* p, int32_t col, int32_t row) {
+uint64_t reject(const State* p, int32_t col, int32_t row) {
     int32_t diag_ur = row + col;
     int32_t diag_ul = row + queens - col;
-    uint32_t ret = (p->rows & (1U << row));
+    uint64_t ret = (p->rows & (1U << row));
     ret += (p->cols & (1U << col));
     ret += (p->diag_ul & (1ULL << diag_ul));
     ret += (p->diag_ur & (1ULL << diag_ur));
