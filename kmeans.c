@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 
 #define AOCL_ALIGNMENT 64
 
@@ -64,14 +65,14 @@ FeatureDefinition load_file(char* filename) {
     return ret;
 }
 
-int isClose(float *c1, float *c2, int n, int p, float tolerance) {
+int isClose(float *restrict c1, float *restrict c2, int n, int p, float tolerance) {
     for (int i = 0; i < n*p; ++i)
         if (abs(c1[i]-c2[i]) > tolerance) return 0;
 
     return 1;
 }
 
-void update_centroids(int *labels, FeatureDefinition* fd, int *labelCounts, float *centroids, int n){
+void update_centroids(int *restrict labels, FeatureDefinition* fd, int *labelCounts, float *centroids, int n){
     memset(centroids, 0, n * fd->nfeatures * sizeof(float));
     memset(labelCounts, 0, n * sizeof(int));
     // dont' want to have to do locks for multiple threads updating the same centroid:
@@ -80,7 +81,7 @@ void update_centroids(int *labels, FeatureDefinition* fd, int *labelCounts, floa
         for (int i = 0; i < fd->npoints; ++i) {
             if (labels[i] != c) continue;
             ++labelCounts[c];
-#pragma omp simd
+            #pragma omp simd
             for (int j = 0; j < fd->nfeatures; ++j) {
                 centroids[c * fd->nfeatures + j] += fd->features[i][j];
             }
@@ -88,14 +89,14 @@ void update_centroids(int *labels, FeatureDefinition* fd, int *labelCounts, floa
     }
     #pragma omp simd
     for (int c = 0; c < n; ++c){
-        // if (labelCounts[c] == 0) printf("Missing data for %d!\n", c);
+        if (labelCounts[c] <= 0) continue;
         for (int j = 0; j < fd->nfeatures; ++j) {
             centroids[c * fd->nfeatures + j] /= labelCounts[c];
         }
     }
 }
 
-void update_labels(int *labels, FeatureDefinition* fd, float *centroids, int n) {
+void update_labels(int *labels, FeatureDefinition* fd, float *restrict centroids, int n) {
     #pragma omp parallel for
     for (int i = 0; i < fd->npoints; ++i) {
         float best_distance = INFINITY;
@@ -136,7 +137,8 @@ int main(int argc, char **argv) {
     //    labels = getlabels(points, centroids)
     //    centroids = labels.groupby().mean()
 
-    srand(43);
+    //srand(43);
+    srand(time(0));
 
     float *old_centroids = (float*)malloc(k * fd.nfeatures * sizeof(float));
     memset(old_centroids, 0, k * fd.nfeatures * sizeof(float));
