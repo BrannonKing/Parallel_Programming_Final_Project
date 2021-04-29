@@ -144,13 +144,7 @@ int32_t* calculate_means(int k,float** data_array,long iteration)
 
                 nochange = 0;
             }
-            //point i belongs to cluster index/membership[i]
-
-            // update this centroid/means array, for this cluster only ( coz new value added)
-
         }
-
-
 
         if(nochange)
             break;
