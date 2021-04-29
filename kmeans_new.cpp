@@ -1,134 +1,26 @@
-
-#include <vector>
-#include <iostream>
-
-#include <malloc.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <time.h>
-#include <math.h>
-#include <float.h>
+#include "kmeans_new.h"
+#include "kmeans_util.h"
 
 using namespace std;
+vector<vector<float>> means_array;
 long N;
 long M;
-typedef vector<float> v_float;
-
-#define AOCL_ALIGNMENT 64
-struct FeatureDefinition {
-    int32_t npoints, nfeatures;
-    float **features; // [npoints][nfeatures]
-};
-
-struct FeatureDefinition load_file(char* filename) {
-    FILE *infile;
-    char line[2048];
-    float *buf;
-    int32_t i, j;
-    struct FeatureDefinition ret;
-    ret.nfeatures = ret.npoints = 0;
-
-    if ((infile = fopen(filename, "r")) == NULL) {
-        fprintf(stderr, "Error: no such file (%s)\n", filename);
-        exit(1);
-    }
-    while (fgets(line, 1024, infile) != NULL)
-        if (strtok(line, " \t\n") != 0)
-            ret.npoints++;
-    rewind(infile);
-    while (fgets(line, 1024, infile) != NULL) {
-        if (strtok(line, " \t\n") != 0) {
-            /* ignore the id (first attribute): nfeatures = 1; */
-            while (strtok(NULL, " ,\t\n") != NULL) ret.nfeatures++;
-            break;
-        }
-    }
-
-    /* allocate space for features[] and read attributes of all objects */
-    N = ret.npoints;
-    M = ret.nfeatures;
-
-    buf             = (float*) malloc(N*M*sizeof(float));
-    ret.features    = (float**)malloc(ret.npoints*sizeof(float*));
-    ret.features[0] = (float*) malloc(ret.npoints*ret.nfeatures*sizeof(float));
-    for (i=1; i<ret.npoints; i++)
-        ret.features[i] = ret.features[i-1] + ret.nfeatures;
-    rewind(infile);
-    i = 0;
-    while (fgets(line, 1024, infile) != NULL) {
-        if (strtok(line, " \t\n") == NULL) continue;
-        for (j=0; j<ret.nfeatures; j++) {
-            buf[i] = atof(strtok(NULL, " ,\t\n"));
-            i++;
-        }
-    }
-    fclose(infile);
-    
-
-    cout<<"\nI/O completed"<<endl;
-    cout<<"\nNumber of objects: "<<ret.npoints<<endl;
-    cout<<"Number of features: "<<ret.nfeatures<<endl;
-
-    memcpy(ret.features[0], buf, ret.npoints*ret.nfeatures*sizeof(float)); /* now features holds 2-dimensional array of features */
-    free(buf);
-
-    return ret;
-}
-
-float calc_distance(float* p1, vector<float> const p2)
-{
-    float distance_sq_sum = 0;
-
-    for (int ii = 0; ii < M; ii++)
-        distance_sq_sum += ((p1[ii] - p2[ii])* (p1[ii] - p2[ii]));
-
-    return distance_sq_sum;
-
-}
-
-int32_t* find_cluster(float** data_array,int k);
-
-void init_max(float ** data_array, 
-v_float& max_array)
-{
-    for(long i =0;i<N;i++)
-    {
-        for(long j=0;j<M;j++)
-        {
-            max_array[j]= data_array[i][j] > max_array[j] ? data_array[i][j] : max_array[j];
-        }
-    }
-}
-
- void init_min(float ** data_array,v_float& min_array)
-{
-    for(long i =0;i<N;i++)
-    {
-        for(long j=0;j<M;j++)
-        {
-            min_array[j]= data_array[i][j] < min_array[j] ? data_array[i][j] : min_array[j];
-        }
-    }
-
-}
-float float_rand( float min, float max )
-{
-    float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
-    return min + scale * ( max - min );      /* [min, max] */
-}
-
-
-void init_means(float **data_array,short k,v_float const min_array,v_float const max_array,vector<vector<float>>& means_array)
+/***
+ *
+ * @param k - no of centroids
+ * @param min_array : array having minimum of each feature
+ * @param max_array : array having maximum of each feature
+ * @param means_array: kxM array, basically there are k centroid of M dimension/features
+ */
+void init_means(short k,v_float const min_array,v_float const max_array,vector<vector<float>>& means_array)
 {
     for(short i=0;i<k;i++)
     {
-        vector<float> vec;
+        v_float vec(M,0);
         for(long j=0;j<M;j++)
         {
-
-            vec.push_back(float_rand(min_array[j],max_array[j]));
+            vec[j] = float_rand(min_array[j],max_array[j]);
+//            vec.push_back((min_array[j]+max_array[j])/8);
         }
 
         means_array.push_back(vec);
@@ -136,31 +28,49 @@ void init_means(float **data_array,short k,v_float const min_array,v_float const
 
 }
 
-//
-void update_mean(int N, vector<float>& means_row,float* data_row)
+/***
+ * Update the k centroids of M feature
+ * @param N : no of elements in this cluster
+ * @param means_row: the centroid ?
+ * @param data_row: the single point ?
+ */
+void update_mean(int N, vector<float>& means_row, float *__restrict__  data_row)
 {
-    // update mean for each feature 
+    if(N < 0) {
+        cout<<"N is less than zero error";
+        exit(5);
+    }
+    // update mean for each feature
     for(int i =0;i<M;i++)
     {
         float m= means_row[i];
-        m = (m*(N-1)+data_row[i]) / (float) N;
+        m *= (N-1);
+        m += data_row[i];
+        m = m/N;
         means_row[i] = m;
     }
-}  
+}
 
 
-
-long classify(vector<vector<float>> const means_array,float* data_row,int k)
+/***
+ * For each point having M dimensions/features
+ * Calculate
+ * @param means_array - Mxk array of centroids
+ * @param data_row - distance vector rows
+ * @param k
+ * @return
+ */
+int classify(v_float distances,int k)
 {
-    float min= FLT_MAX;
+    float min= INT32_MAX;
     long index = -1;
 
     // for each centroid
-    for( int i=0;i<k ;i++)
+    for( int i=0;i<distances.size() ;i++)
     {
 
-        // for each feature
-        float dist_temp = calc_distance(data_row,means_array[i]);
+        // calculate distance
+        float dist_temp = distances[i];
         if(dist_temp < min)
         {
             min = dist_temp;
@@ -170,85 +80,84 @@ long classify(vector<vector<float>> const means_array,float* data_row,int k)
 
     return  index;
 }
-void print_vect(vector<float> const ar)
-{
-    for(int i =0;i<ar.size();i++)
-        cout<<ar[i]<<" ";
-    
-    cout<<endl;
-}
-vector<vector<float>> means_array;
+
+
+
+priority_queue <mem_point,std::vector<mem_point>,  custom_cmpr> priority_q;
+
 // dim = no of features
-void calculate_means(long k,float** data_array,long iteration)
+int32_t* calculate_means(int k,float** data_array,long iteration)
 {
-    vector<float> min_array(M, FLT_MAX);
-    vector<float> max_array(M, FLT_MIN);
-    // float min_array[dim];
-    // float max_array[dim] ;
-    for (size_t i = 0; i < M; i++) {
-        min_array[i] = INT32_MAX;
-        }
-        for (size_t i = 0; i < M; i++) {
-            max_array[i] = INT32_MIN;
-        }
+    vector<int> abcd(M);
+    vector<float> min_array(M, INT32_MAX);
+    vector<float> max_array(M, INT32_MIN);
+    cout<<"k: "<<k<<endl;
+    cout<<"iterations "<<iteration<<endl;
 
-    // vector<vector<float>> means_array;
-    //Find the minima and maxima for columns
-    print_vect(max_array);
-    print_vect(min_array);
-    init_max(data_array, max_array);
-    
-    init_min(data_array,min_array);
-  
+    init_max(data_array, max_array, N, M );
+    init_min(data_array,min_array, N , M);
+
     // initialize means to random points , means array = dim x K
-    
-    init_means(data_array,k,min_array,max_array,means_array);
-    //  for(short i=0;i<k;i++)
-    // {
-    //     for(long j=0;j<dim;j++)
-    //     {
 
-    //         cout<<means_array[i][j]<< " ";   
-    //     }  
-    //     cout<<endl;
-    // }
-    // no of items per cluster.
-    int cluster_size[k];
-    memset(cluster_size,0,k*sizeof (int));
-    // membership , point i belong to membership[i] cluster
-    int membership[N];
-    memset(cluster_size,0,N*sizeof (int));
+    init_means(k,min_array,max_array,means_array);
 
+    int32_t* membership = (int32_t*) memalign(AOCL_ALIGNMENT,N*sizeof (int32_t));
+    int32_t* cluster_size = (int32_t*) memalign(AOCL_ALIGNMENT,k*sizeof (int32_t));
+    memset(membership,-1,N*sizeof(int32_t));
+    memset(cluster_size,0,k*sizeof(int32_t));
 
     for(int jj =0;jj<iteration;jj++) {
         int nochange = 1;
+//        memset(membership,-1,N*sizeof(int32_t));
+//        memset(cluster_size,0,k*sizeof(int32_t));
+        // for each point
         for (int ii = 0; ii < N; ii++) {
-
-
+            v_float dist(k,0);
+            priority_queue<float,v_float,custom_cmpr> que;
             float *item_row = data_array[ii];
-            // classify return the value from 0->k
 
-            int index = classify(means_array, item_row, k);
-            cluster_size[index] += 1;
-            int csize = cluster_size[index];
-            // update centroids/means array, for this cluster only ( coz new value added)
-            cout<<"previous:"<<endl;
-            print_vect(means_array[index]);
-            update_mean(csize,means_array[index], item_row);
-            print_vect(means_array[index]);
-            if (index != membership[ii])
+            // classify this point return the value from 0->k
+            for(int i =0;i<k;i++) {
+                // calculate distance between each k centroid
+                float d = calc_distance(data_array[ii], means_array[i],M);
+                dist[i] = d;
+                que.push(d);
+//                mem_point p;
+//                p.distance = d;
+//                p.centroid = i;
+//                        priority_q.push(p);
+            }
+            int index = classify(dist, k);
+            if(index == membership[ii])
+            {
+                // this implies no change in membership
+
+            }
+            else {
+                if(cluster_size[membership[ii]] > 0)
+                    cluster_size[membership[ii]] -= 1; // decrement count from previous
+
+                membership[ii] = index; // update membership mapping
+                cluster_size[membership[ii]] += 1; // incerement count in new cluster
+                int csize = cluster_size[index];
+                update_mean(csize, means_array[index], item_row);
+
                 nochange = 0;
-
+            }
             //point i belongs to cluster index/membership[i]
-            membership[ii] = index;
+
+            // update this centroid/means array, for this cluster only ( coz new value added)
 
         }
+
+
 
         if(nochange)
             break;
     }
 
-  
+
+    return cluster_size;
 }
 
 
@@ -265,30 +174,38 @@ int main(int argc, char **argv) {
     }
 
     struct FeatureDefinition fd = load_file(argv[2]);
+    N = fd.npoints;
+    M = fd.nfeatures;
     int32_t* membership = (int*) memalign(AOCL_ALIGNMENT,fd.npoints*sizeof (int32_t));
+    ios_base::sync_with_stdio(false);
+    auto start = std::chrono::high_resolution_clock::now();
+    int k =9;
+    int iterations = 50;
+    int32_t * cluster_map = calculate_means(k,fd.features,iterations);
+//    membership = find_cluster(fd.features,k);
 
-    calculate_means(3,fd.features,500);
-    membership = find_cluster(fd.features,3);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(end - start);
 
-    for(int i=0;i<fd.npoints;i++)
-        {
-            cout<<"point "<<i<<" is in cluster "<<membership[i]<<endl;
+    std::cout << "It took " << time_span.count()*1e03<<setprecision(9) << " milli seconds.\n";
 
-        }
-    printf("done");
+    for(int i=0;i<k;i++)
+        cout<<"no of elements in cluster "<<i<<": "<<cluster_map[i]<<endl;
+
+
     return 0;
 }
 
-int32_t* find_cluster(float** data_array,int k)
+int32_t* find_cluster(float** data_array,int k, int csize)
 {
-    int32_t* clusters = (int32_t*)  memalign(AOCL_ALIGNMENT,sizeof(int)*N);
+    int32_t* clusters = (int32_t*)  memalign(AOCL_ALIGNMENT,sizeof(int)*csize);
     int index;
-    for(int i =0;i<N;i++)
-    {
-        index = classify(means_array,data_array[i],k);
-        clusters[i] = index ;
-
-    }
+//    for(int i =0;i<csize;i++)
+//    {
+//        index = classify(data_array[i],k);
+//        clusters[i] = index ;
+//
+//    }
 
     return clusters;
 
