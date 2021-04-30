@@ -11,7 +11,7 @@ if (OpenMP_FOUND)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-
-add_executable(kmeans_exec kmeans_new.cpp kmeans_util.cpp)
+#add_executable(kmeans_new kmeans2.cpp kmeans_util.cpp)
+add_executable(kmeans_exec kmeans_new.cpp kmeans_util.cpp kmeans_serial.cpp kmeans_parallel.cpp)
 add_executable(nqueens_branch nqueens_branch.cpp)
 add_executable(nqueens_backtrack nqueens_backtrack.c)

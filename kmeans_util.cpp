@@ -2,6 +2,14 @@
 // Created by ayush on 4/29/21.
 #include "kmeans_util.h"
 using namespace  std;
+long N;
+long M;
+
+/***
+ * Utility function to read a file
+ * @param filename
+ * @return
+ */
 struct FeatureDefinition load_file(char* filename) {
     FILE *infile;
     char line[2048];
@@ -72,47 +80,6 @@ float calc_distance(v_float p1, vector<float> const p2, int M)
 
 /***
  *
- * @param data_array
- * @param k
- * @return
- */
-
-
-/***
- *
- * @param data_array
- * @param max_array
- */
-void init_max(vector<v_float > data_array,
-              v_float& max_array, int N, int M)
-{
-    for(long i =0;i<N;i++)
-    {
-        for(long j=0;j<M;j++)
-        {
-            max_array[j]= data_array[i][j] > max_array[j] ? data_array[i][j] : max_array[j];
-        }
-    }
-}
-
-/***
- *
- * @param data_array
- * @param min_array
- */
-void init_min(vector<v_float> data_array,v_float& min_array, int N, int M)
-{
-    for(long i =0;i<N;i++)
-    {
-        for(long j=0;j<M;j++)
-        {
-            min_array[j]= data_array[i][j] < min_array[j] ? data_array[i][j] : min_array[j];
-        }
-    }
-
-}
-/***
- *
  * @param min
  * @param max
  * @return
@@ -122,6 +89,7 @@ float float_rand( float min, float max )
     float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
     return min + scale * ( max - min );      /* [min, max] */
 }
+
 
 void print_vect(vector<float> const ar)
 {

@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <limits>
 #include <random>
-// high_resolution_clock example
+
 #include <iostream>
 #include <ctime>
 #include <ratio>
@@ -50,6 +50,9 @@ struct FeatureDefinition {
 
 typedef struct Membership mem_point;
 typedef std::vector<float> v_float;
+
+extern    long N;
+extern    long M;
 
 #define AOCL_ALIGNMENT 64
 #endif //CS5234_FINAL_PROJECT_KMEANS_NEW_H
