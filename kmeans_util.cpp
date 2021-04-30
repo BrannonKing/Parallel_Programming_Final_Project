@@ -58,7 +58,7 @@ struct FeatureDefinition load_file(char* filename) {
  * @param p2
  * @return a distance
  */
-float calc_distance(float* p1, vector<float> const p2, int M)
+float calc_distance(v_float p1, vector<float> const p2, int M)
 {
     float distance_sq_sum = 0;
 
@@ -83,7 +83,7 @@ float calc_distance(float* p1, vector<float> const p2, int M)
  * @param data_array
  * @param max_array
  */
-void init_max(float ** data_array,
+void init_max(vector<v_float > data_array,
               v_float& max_array, int N, int M)
 {
     for(long i =0;i<N;i++)
@@ -100,7 +100,7 @@ void init_max(float ** data_array,
  * @param data_array
  * @param min_array
  */
-void init_min(float ** data_array,v_float& min_array, int N, int M)
+void init_min(vector<v_float> data_array,v_float& min_array, int N, int M)
 {
     for(long i =0;i<N;i++)
     {

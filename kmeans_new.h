@@ -16,6 +16,10 @@
 #include <time.h>
 #include <math.h>
 #include <float.h>
+#include <algorithm>
+#include <cstdlib>
+#include <limits>
+#include <random>
 // high_resolution_clock example
 #include <iostream>
 #include <ctime>
