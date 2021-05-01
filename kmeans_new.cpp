@@ -10,6 +10,15 @@ char print_arr(int32_t* cluster_map, int k)
 
     return '\n';
 }
+
+char print_arr(auto cluster_map, int k)
+{
+    int i=0;
+    for (auto item : cluster_map)
+        cout << "no of elements in cluster " << i++ << ": " << item.count << endl;
+
+    return '\n';
+}
 double run_serial(int k, int iterations,vector<v_float>& data, vector<v_float>& means_arr)
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -30,18 +39,16 @@ double run_serial(int k, int iterations,vector<v_float>& data, vector<v_float>& 
 
 double run_parallel(int k, int iterations,vector<v_float>& data, vector<v_float>& means_arr)
 {
-    using namespace std;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    int32_t *cluster_map = kmeansparallel::calculateMeans_omp(k, data, iterations, means_arr);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(end - start);
-    std::cout << "parallel time: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
+    auto start = chrono::high_resolution_clock::now();
+    auto cluster_map = kmeansparallel::calculateMeans_omp(k, data, iterations, means_arr);
+    auto end =chrono::high_resolution_clock::now();
+    chrono::duration<double> time_span = duration_cast<chrono::duration<double>>(end - start);
+    cout << "parallel time: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
     auto serial_timespan = time_span.count() * 1e03;
 
-    long sun = 0;
+    unsigned long long sun = 0;
     for (int i = 0; i < k; i++)
-        sun += cluster_map[i];
+        sun += cluster_map[i].count;
     sun == N ? cout<< "correctness pass" : cout << "correctness fail, details: " << print_arr(cluster_map,k);
     return serial_timespan;
 }
@@ -77,8 +84,8 @@ int main(int argc, char **argv) {
     }
 
     ios_base::sync_with_stdio(false);
-    int k =9;
-    int iterations = 10;
+    int k =100;
+    int iterations = 5000;
     vector<v_float> means_arr(k, v_float(M,0));
     auto serial_timespan = run_serial(k,iterations,data,means_arr);
     auto parallel_timespan = run_parallel(k,iterations,data,means_arr);

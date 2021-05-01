@@ -84,7 +84,7 @@ namespace kmeans_serial {
     }
 
 
-    priority_queue<mem_point, std::vector<mem_point>, custom_cmpr> priority_q;
+
 
     int isClose(vector<v_float> &c1, vector<v_float> &c2, float tolerance, int k) {
         for (int i = 0; i < k; ++i) {

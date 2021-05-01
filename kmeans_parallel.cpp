@@ -10,16 +10,19 @@
  * @param data_array
  */
 namespace kmeansparallel {
-    float calc_distance(v_float p1, v_float const p2, int M)
+
+typedef struct centroid_data centroid_data;
+    float calc_distance(v_float p1, float* p2, int M)
     {
         float distance_sq_sum = 0;
         int ii;
-        #pragma omp parallel for
+        #pragma omp for schedule(static)
         for (ii = 0; ii < M; ii++)
         {
             float s = p1[ii] - p2[ii];
             distance_sq_sum += s*s;
         }
+
         return sqrtf(distance_sq_sum);
 
     }
@@ -30,11 +33,35 @@ namespace kmeansparallel {
         static std::mt19937 random_number_generator(seed());
         std::uniform_int_distribution<size_t> indices(0, N - 1);
         int i;
-        #pragma omp parallel for simd private(i)
+//        #pragma omp for simd private(i)
         for (i=0;i<means_array.size();i++) {
             means_array[i] = data_array[indices(random_number_generator)];
         }
 
+    }
+    void init_means3(int k,vector<v_float> data_array,vector<centroid_data>& centroids) {
+//    srand(43);
+        static std::random_device seed;
+        static std::mt19937 random_number_generator(seed());
+        std::uniform_int_distribution<size_t> indices(0, N - 1);
+//        #pragma omp for simd private(i)
+        for (int i=0;i<k;i++) { // means arraay.size() = k
+            centroid_data  temp(data_array[indices(random_number_generator)]);
+            centroids[i] = temp;
+        }
+//        return data_array[indices(random_number_generator)];
+    }
+    
+    v_float init_means2(vector<v_float> data_array) {
+//    srand(43);
+        static std::random_device seed;
+        static std::mt19937 random_number_generator(seed());
+        std::uniform_int_distribution<size_t> indices(0, N - 1);
+//        #pragma omp for simd private(i)
+//        for (auto& item : means_array) { // means arraay.size() = k
+//            item.push(data_array[indices(random_number_generator)]);
+//        }
+    return data_array[indices(random_number_generator)];
     }
 
 /***
@@ -101,7 +128,7 @@ namespace kmeansparallel {
     }
 
 
-    priority_queue<mem_point, std::vector<mem_point>, custom_cmpr> priority_q;
+    
 
     int isClose(vector<v_float> &c1, vector<v_float> &c2, float tolerance, int k) {
         for (int i = 0; i < k; ++i) {
@@ -110,60 +137,98 @@ namespace kmeansparallel {
         }
         return 1;
     }
+    struct custom_cmpr {
+    bool operator()(mem_point p1,mem_point p2) {
+        // return "true" if "p1" is ordered before "p2", for example:
+        if (p1.distance > p2.distance)
+            return true;
+        return false;
+    }
+};
+    char print_arr(auto cluster_map, int k)
+    {
+        int i=0;
+        for (auto item : cluster_map)
+            cout <<"no of elements in cluster " << i++ << ": " << item.count << endl;
+
+        return '\n';
+    }
 
 // dim = no of features
 
-    int32_t *calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array) {
+    vector<centroid_data>  calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array) {
         cout << endl<<"k: " << k << endl;
         cout << "iterations " << iteration << endl;
+        
+
 
         // initialize means to random points , means array = dim x K
-        init_means(k,means_array,data_array);
+        vector<centroid_data> centroids(k);
 
-        int32_t *membership = (int32_t *) memalign(AOCL_ALIGNMENT, N * sizeof(int32_t));
-        int32_t *cluster_size = (int32_t *) memalign(AOCL_ALIGNMENT, k * sizeof(int32_t));
-        memset(membership, -1, N * sizeof(int32_t));
-        memset(cluster_size, 0, k * sizeof(int32_t));
+
+        init_means3(k,data_array,centroids);
+
+
+//        int32_t *membership = (int32_t *) memalign(AOCL_ALIGNMENT, k * sizeof(int32_t));
+//        int32_t *cluster_size = (int32_t *) memalign(AOCL_ALIGNMENT, k * sizeof(int32_t));
+//        memset(membership, -1, N * sizeof(int32_t));
+//        memset(cluster_size, 0, k * sizeof(int32_t));
 //    vector<v_float> oldmean(k);
            int j,ii,i;
         // for each point
 
 
-            cout<<"no of threads: "<<omp_get_num_threads();
 
-            for (j = 0; j < iteration; j++) {
-                for (ii = 0; ii < N; ii++) {
-                    v_float dist(k, 0);
+	    #pragma omp parallel default(none)\
+	    shared(iteration,k,means_array,centroids,N,M,cout) \
+        private(j,ii,i) firstprivate(data_array)
+        {
+            cout<<"no of threads: "<<omp_get_num_threads()<<endl;
 
-                    auto item_row = data_array[ii];
+        for (j = 0; j < iteration; j++) {
 
-                    // classify this point return the value from 0->k
-                    for (i = 0; i < k; i++) {
-                        // calculate distance between each k centroid
-                        float d = calc_distance(item_row, means_array[i], M);
-                        dist[i] = d;
-                    }
+            #pragma  omp for simd
+            for (int i = 0; i < k; i++) {
 
-                    int index = classify(dist, k);
+                centroids[i].count = 0;
+            }
 
-                    if (index != membership[ii]) {
-//                    oldmean = means_array;
-                        if (cluster_size[membership[ii]] > 0) {
-                            int old_cluster = membership[ii];
-                            int old_cluster_size = cluster_size[old_cluster];
-                            update_old_cluster_mean(old_cluster_size, means_array[old_cluster], item_row);
-                            cluster_size[membership[ii]] -= 1; // decrement count from previous
-                        }
-                        membership[ii] = index; // update membership mapping
-                        cluster_size[index] += 1; // increament count in new cluster
-                        int csize = cluster_size[index];
-                        update_mean(csize, means_array[index], item_row);
-                    }
+            #pragma omp for schedule(static)
+            for (ii = 0; ii < N; ii++) {
+                priority_queue<mem_point, std::vector<mem_point>, custom_cmpr> priority_q;
+                v_float dist(k, 0);
+
+                auto item_row = data_array[ii];
+
+                // classify this point return the value from 0->k
+                for (i = 0; i < k; i++) {
+                    // calculate distance between each k centroid
+                    float d = calc_distance(item_row, centroids[i].membership, M);
+                    dist[i] = d;
+                    mem_point p;
+                    p.distance = d;
+                    p.centroid = i;
+                    priority_q.push(p);
+                }
+
+                int index = priority_q.top().centroid;// point ii belongs to p[i].top() centroid
+                #pragma omp critical
+                {
+                    centroids[index].push(data_array[ii]);
                 }
             }
 
+            int sum = 0;
+            #pragma omp for simd
+            for (int i = 0; i < k; i++) {
+                sum += centroids[i].count;
+
+            }
+//            sum == N ? cout<<endl<<"iteration ok" : cout<<endl<<"iteration: "<<j<<" "<<endl<<print_arr(centroids,k);
+        }
+            }
 //    while( !isClose(oldmean,means_array,k,0.001));
 
-        return cluster_size;
+        return centroids;
     }
 }

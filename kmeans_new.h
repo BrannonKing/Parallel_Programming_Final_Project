@@ -29,30 +29,20 @@
 #include <iomanip>
 #include <queue>
 
-struct  Membership {
-    int centroid;
-    float distance;
-}__attribute__((packed));
 
-struct custom_cmpr {
-    bool operator()(float p1,float p2) {
-        // return "true" if "p1" is ordered before "p2", for example:
-        if (p1 > p2)
-            return true;
-        return false;
-    }
-};
+
 
 struct FeatureDefinition {
     int32_t npoints, nfeatures;
     float **features; // [npoints][nfeatures]
 };
 
-typedef struct Membership mem_point;
+
 typedef std::vector<float> v_float;
 
 extern    long N;
 extern    long M;
+using DataFrame = std::vector<std::vector<float>>;
 
 #define AOCL_ALIGNMENT 64
 #endif //CS5234_FINAL_PROJECT_KMEANS_NEW_H
