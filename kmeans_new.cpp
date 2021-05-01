@@ -24,7 +24,7 @@ double run_serial(int k, int iterations,vector<v_float>& data, vector<v_float>& 
     auto start = std::chrono::high_resolution_clock::now();
     int32_t * cluster_map = kmeans_serial::calculateMeans_serial(k, data, iterations, means_arr);
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(end - start);
+    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
 
     std::cout << "serial time: " << time_span.count()*1e03<<setprecision(9) << " milli seconds.\n";
     auto serial_timespan = time_span.count()*1e03;
@@ -42,7 +42,7 @@ double run_parallel(int k, int iterations,vector<v_float>& data, vector<v_float>
     auto start = chrono::high_resolution_clock::now();
     auto cluster_map = kmeansparallel::calculateMeans_omp(k, data, iterations, means_arr);
     auto end =chrono::high_resolution_clock::now();
-    chrono::duration<double> time_span = duration_cast<chrono::duration<double>>(end - start);
+    chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
     cout << "parallel time: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
     auto serial_timespan = time_span.count() * 1e03;
 
@@ -54,18 +54,23 @@ double run_parallel(int k, int iterations,vector<v_float>& data, vector<v_float>
 }
 int main(int argc, char **argv) {
     srand(time(0));
-    if (argc != 3) {
-        fprintf(stderr, "Invalid parameters. Usage: kmeans <clusters> <input file>");
+    if (argc != 4) {
+        fprintf(stderr, "Invalid parameters. Usage: kmeans <clusters> <iterations> <input file>");
         return 2;
     }
     int clusters = atoi(argv[1]);
     if (clusters <= 0) {
-        fprintf(stderr, "Invalid cluster count. Usage: kmeans <clusters> <input file>");
+        fprintf(stderr, "Invalid cluster count. Usage: kmeans <clusters> <iterations> <input file>");
         return 3;
     }
 
+    int iterations = atoi(argv[2]);
+    if (iterations <= 0) {
+        fprintf(stderr, "Invalid iterations count. Usage: kmeans <clusters> <iterations> <input file>");
+        return 3;
+    }
 
-    struct FeatureDefinition fd = load_file(argv[2]);
+    struct FeatureDefinition fd = load_file(argv[3]);
     N = fd.npoints;
     M = fd.nfeatures;
     int32_t* membership = (int*) memalign(AOCL_ALIGNMENT,fd.npoints*sizeof (int32_t));
@@ -84,8 +89,8 @@ int main(int argc, char **argv) {
     }
 
     ios_base::sync_with_stdio(false);
-    int k =100;
-    int iterations = 5000;
+    int k =clusters;
+    //int iterations = 5000;
     vector<v_float> means_arr(k, v_float(M,0));
     auto serial_timespan = run_serial(k,iterations,data,means_arr);
     auto parallel_timespan = run_parallel(k,iterations,data,means_arr);

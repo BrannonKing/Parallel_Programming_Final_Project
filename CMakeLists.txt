@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(CS5234_Final_Project LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_FOUND)
