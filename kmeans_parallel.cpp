@@ -183,7 +183,8 @@ typedef struct centroid_data centroid_data;
 	    shared(iteration,k,means_array,centroids,N,M,cout) \
         private(j,ii,i) firstprivate(data_array)
         {
-            cout<<"no of threads: "<<omp_get_num_threads()<<endl;
+            if(omp_get_thread_num() == 0)
+                cout<<"no of threads: "<<omp_get_num_threads()<<endl;
 
         for (j = 0; j < iteration; j++) {
 
