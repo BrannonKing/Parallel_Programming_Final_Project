@@ -15,7 +15,7 @@ char print_arr(auto cluster_map, int k)
 {
     int i=0;
     for (auto item : cluster_map)
-        cout << "no of elements in cluster " << i++ << ": " << item.count << endl;
+        cout << "no of elements in cluster " << i++ << ": " << item << endl;
 
     return '\n';
 }
@@ -48,8 +48,8 @@ double run_parallel(int k, int iterations,vector<v_float>& data, vector<v_float>
 
     unsigned long long sun = 0;
     for (int i = 0; i < k; i++)
-        sun += cluster_map[i].count;
-    sun == N ? cout<< "correctness pass" : cout << "correctness fail, details: " << print_arr(cluster_map,k);
+        sun += cluster_map[i];
+    sun == N ? cout<< "correctness pass" : cout << "correctness fail, details: " << print_vect(cluster_map);
     return serial_timespan;
 }
 int main(int argc, char **argv) {

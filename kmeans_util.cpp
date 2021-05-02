@@ -91,12 +91,14 @@ float float_rand( float min, float max )
 }
 
 
-void print_vect(vector<float> const ar)
+char print_vect(vector<int32_t> const ar)
 {
     for(int i =0;i<ar.size();i++)
         cout<<ar[i]<<" ";
 
     cout<<endl;
+
+    return '\n';
 }
 
 //
