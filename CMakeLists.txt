@@ -4,7 +4,7 @@ project(CS5234_Final_Project LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -march=native")
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_FOUND)
