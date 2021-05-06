@@ -165,11 +165,11 @@ typedef struct centroid_data centroid_data;
         vector<v_float > centroids(k,v_float(M,0));
         init_means3(k,data_array,centroids);
 
-//       int32_t *membership = (int32_t *) memalign(AOCL_ALIGNMENT, N * sizeof(int32_t));
+      int32_t *membership = (int32_t *) memalign(AOCL_ALIGNMENT, N * sizeof(int32_t));
 //       int32_t *cluster_size = (int32_t *) memalign(AOCL_ALIGNMENT, k * sizeof(int32_t));
-//       memset(membership, -1, N *sizeof(int32_t));
+      
 //       memset(cluster_size, 0, k * sizeof(int32_t));
-       vector<v_float> membership(N, vector<float>(8,-1) );
+    //    vector<v_float> membership(N, vector<float>(8,-1) );
        vector<int32_t> cluster_size(k,0);
 
 
@@ -180,7 +180,8 @@ typedef struct centroid_data centroid_data;
                 cout<<"no of threads: "<<omp_get_num_threads()<<endl;
 
         for (j = 0; j < iteration; j++) {
-            std::fill(membership.begin(),membership.end(),v_float(M,-1));
+            memset(membership, -1, N *sizeof(int32_t));
+            // std::fill(membership.begin(),membership.end(),v_float(M,-1));
             std::fill(cluster_size.begin(),cluster_size.end(),0);
 
              #pragma omp parallel for schedule(static) \
@@ -213,14 +214,14 @@ typedef struct centroid_data centroid_data;
 
                 // this point (ii) belongs to p[i].top() centroid
                     int index = priority_q.top().centroid;
-                    membership[ii][0] = index;
+                    membership[ii] = index;
             }
 
             // int sum = 0;
 #pragma omp parallel for shared(membership,centroids,cluster_size,data_array,M,N,k) default(none) schedule(static)
             for (int jj = 0; jj < k ; ++jj) {
                 for (int io = 0; io < N; ++io) {
-                    if (membership[io][0] != jj) continue;
+                    if (membership[io] != jj) continue;
                     ++cluster_size[jj];
                     //update centroi
 
