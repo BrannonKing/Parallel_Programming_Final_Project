@@ -74,24 +74,23 @@ int isClose(float *restrict c1, float *restrict c2, int n, int p, float toleranc
 
 void update_centroids(const int *restrict labels, FeatureDefinition* fd, int *labelCounts, float *centroids, int n){
     memset(centroids, 0, n * fd->nfeatures * sizeof(float));
-    memset(labelCounts, 0, n * sizeof(int));
     // dont' want to have to do locks for multiple threads updating the same centroid:
     #pragma omp parallel for
     for (int c = 0; c < n; ++c) {
+        int counter = 0;
         for (int i = 0; i < fd->npoints; ++i) {
             if (labels[i] != c) continue;
-            ++labelCounts[c];
+            ++counter;
             #pragma omp simd
             for (int j = 0; j < fd->nfeatures; ++j) {
                 centroids[c * fd->nfeatures + j] += fd->features[i][j];
             }
         }
-    }
-    #pragma omp simd
-    for (int c = 0; c < n; ++c){
-        if (labelCounts[c] <= 0) continue;
+        labelCounts[c] = counter;
+        if (counter <= 0) continue;
+        #pragma omp simd
         for (int j = 0; j < fd->nfeatures; ++j) {
-            centroids[c * fd->nfeatures + j] /= (float)labelCounts[c];
+            centroids[c * fd->nfeatures + j] /= (float)counter;
         }
     }
 }
@@ -159,7 +158,7 @@ int main(int argc, char **argv) {
     printf("Starting computation...\n");
     double start = omp_get_wtime();
     int iterations = 0;
-    while (++iterations < max_iterations && !isClose(centroids, old_centroids, k, fd.nfeatures, 0.0001f)) {
+    while (++iterations < max_iterations && !isClose(centroids, old_centroids, k, fd.nfeatures, 0.001f)) {
         memcpy(old_centroids, centroids, sizeof(float) * k * fd.nfeatures);
         update_labels(labels, &fd, centroids, k);
         update_centroids(labels, &fd, labelCounts, centroids, k);

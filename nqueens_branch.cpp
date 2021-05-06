@@ -2,9 +2,8 @@
 //#include <boost/lockfree/queue.hpp>
 #include <atomic>
 #include <functional>
-//#include <iostream>
+#include <iostream>
 #include <queue>
-#include <vector>
 
 template <typename TWork, bool acceptedHaveNoChildren=true>
 class SearchSpaceBase {
@@ -117,12 +116,12 @@ public:
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "Invalid parameters. Usage: nqueens <queens>");
+        std::cerr << "Invalid parameters. Usage: nqueens <queens>" << std::endl;
         return 1;
     }
     queens = std::strtoul(argv[1], nullptr, 10);
     if (queens <= 0 || queens > 32) {
-        fprintf(stderr, "Invalid queens count. Number expected from 1 to 32.");
+        std::cerr << "Invalid queens count. Number expected from 1 to 32." << std::endl;
         return 2;
     }
 

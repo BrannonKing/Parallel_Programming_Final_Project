@@ -14,9 +14,11 @@ endif()
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopt-info-all=vectorizations.txt") # print out optimized loops in txt file
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-all=vectorizations.txt")
+
 #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
-#add_executable(kmeans kmeans.c kmeans_clustering.c rmse.c)
 add_executable(kmeans kmeans.c)
 target_link_libraries(kmeans PRIVATE m)
 add_executable(nqueens_branch nqueens_branch.cpp)
