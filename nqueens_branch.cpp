@@ -119,14 +119,18 @@ class StallingBacktracker: public BacktrackerBase<T> {
 protected:
     void update_work(T& work) const override {
         //std::this_thread::sleep_for (std::chrono::microseconds(_stall));
-#pragma omp atomic
-        ++_works;
         ++work;
+    }
+
+    bool dequeue_work(T& work) override {
+#pragma omp atomic
+        ++hits;
+        return BacktrackerBase<T>::dequeue_work(work);
     }
 
     void produce_children(T work) override {
         for (int32_t i = 0; i < queens; ++i) {
-            BacktrackerBase<T>::enqueue_work(work);
+            enqueue_work(work);
         }
     }
 
@@ -143,8 +147,14 @@ protected:
     }
 
 public:
-    StallingBacktracker(int stall, T depth) : _stall(stall), _depth(depth), _works(0) {}
-    mutable int _works;
+    StallingBacktracker(int stall, T depth) : _stall(stall), _depth(depth), hits(0) {}
+    mutable int hits;
+
+    bool enqueue_work(T work) override {
+#pragma omp atomic
+        ++hits;
+        return BacktrackerBase<T>::enqueue_work(work);
+    }
 };
 
 int main(int argc, char **argv) {
@@ -174,7 +184,7 @@ int main(int argc, char **argv) {
         tracker.run();
         wtime = omp_get_wtime() - wtime;
         //printf("Discovered %llu solutions in %f s.\n", (unsigned long long)tracker.hit_count(), wtime);
-        std::cout << i << " in " << wtime << " s. for " << tracker._works << " gives " << (wtime / tracker._works) << std::endl;
+        std::cout << i << " in " << wtime << " s. for " << tracker.hits << " gives " << (wtime / tracker.hits) << std::endl;
         //break;
     }
     return 0;
