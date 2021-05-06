@@ -11,3 +11,17 @@ bin
 /build/
 /gitignore/
 Makefile
+/CMakeFiles/
+cachegrind.out.123857
+cachegrind.out.225946
+cmake_install.cmake
+CMakeCache.txt
+CS5234_Final_Project.cbp
+kmeans_exec
+nqueens_backtrack
+nqueens_branch
+Testing/Temporary/LastTest.log
+any.cpp
+kmeans_extra.cpp
+kmeans_extra.h
+kmeans2.cpp
