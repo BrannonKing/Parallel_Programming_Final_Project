@@ -10,7 +10,6 @@ typedef struct {
     uint64_t diag_ur;
     uint64_t diag_ul;
     uint32_t rows;
-    uint32_t cols;
 } State;
 
 uint32_t accept(const State* p, int32_t col) {
@@ -20,7 +19,6 @@ uint64_t reject(const State* p, int32_t col, int32_t row) {
     int32_t diag_ur = row + col;
     int32_t diag_ul = row + queens - col;
     uint64_t ret = (p->rows & (1U << row));
-    ret += (p->cols & (1U << col));
     ret += (p->diag_ul & (1ULL << diag_ul));
     ret += (p->diag_ur & (1ULL << diag_ur));
     return ret;
@@ -28,14 +26,12 @@ uint64_t reject(const State* p, int32_t col, int32_t row) {
 
 void update_state(State* p, int32_t col, int32_t row) {
     p->rows |= (1U << row);
-    p->cols |= (1U << col);
     p->diag_ur |= (1ULL << (row + col));
     p->diag_ul |= (1ULL << (row + queens - col));
 }
 
 void reverse_state(State* p, int32_t col, int32_t row) {
     p->rows &= ~(1U << row);
-    p->cols &= ~(1U << col);
     p->diag_ur &= ~(1ULL << (row + col));
     p->diag_ul &= ~(1ULL << (row + queens - col));
 }
