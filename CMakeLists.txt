@@ -9,7 +9,7 @@ project(CS5234_Final_Project LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_CXX_FLAGS "-O3 -mprefer-vector-width=512 -fvect-cost-model=unlimited -fsimd-cost-model=dynamic -march=skylake-avx512 -Wall -Wextra -march=native")
+set(CMAKE_CXX_FLAGS "-O3 -mprefer-vector-width=256 -fvect-cost-model=unlimited -fsimd-cost-model=dynamic -march=skylake-avx512 -Wall -Wextra -march=native")
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_FOUND)
