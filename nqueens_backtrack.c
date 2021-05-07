@@ -5,87 +5,17 @@
 #include <stdint.h>
 
 int32_t queens;
+uint64_t queens_mask;
 
-typedef struct {
-    uint64_t diag_ur;
-    uint64_t diag_ul;
-    uint32_t rows;
-    uint32_t cols;
-} State;
-
-uint32_t accept(const State* p, int32_t col) {
-    return col == queens - 1;
-}
-uint64_t reject(const State* p, int32_t col, int32_t row) {
-    int32_t diag_ur = row + col;
-    int32_t diag_ul = row + queens - col;
-    uint64_t ret = (p->rows & (1U << row));
-    ret += (p->cols & (1U << col));
-    ret += (p->diag_ul & (1ULL << diag_ul));
-    ret += (p->diag_ur & (1ULL << diag_ur));
-    return ret;
-}
-
-void update_state(State* p, int32_t col, int32_t row) {
-    p->rows |= (1U << row);
-    p->cols |= (1U << col);
-    p->diag_ur |= (1ULL << (row + col));
-    p->diag_ul |= (1ULL << (row + queens - col));
-}
-
-void reverse_state(State* p, int32_t col, int32_t row) {
-    p->rows &= ~(1U << row);
-    p->cols &= ~(1U << col);
-    p->diag_ur &= ~(1ULL << (row + col));
-    p->diag_ul &= ~(1ULL << (row + queens - col));
-}
-
-uint64_t backtrack_unwind(State* p, int32_t col) {
+uint64_t backtrack(int32_t row, uint64_t left, uint64_t down, uint64_t right) {
+    if (row == queens) return 1;
     uint64_t hits = 0;
-    for (int32_t i5 = 0; i5 < queens; ++i5) {
-        if (reject(p, col, i5)) continue;
-        update_state(p, col, i5);
-        for (int32_t i4 = 0; i4 < queens; ++i4) {
-            if (reject(p, col + 1, i4)) continue;
-            update_state(p, col + 1, i4);
-            for (int32_t i3 = 0; i3 < queens; ++i3) {
-                if (reject(p, col + 2, i3)) continue;
-                update_state(p, col + 2, i3);
-                for (int32_t i2 = 0; i2 < queens; ++i2) {
-                    if (reject(p, col + 3, i2)) continue;
-                    update_state(p, col + 3, i2);
-                    for (int32_t i1 = 0; i1 < queens; ++i1) {
-                        if (reject(p, col + 4, i1)) continue;
-                        update_state(p, col + 4, i1);
-                        #pragma omp simd
-                        for (int32_t i0 = 0; i0 < queens; ++i0) {
-                            if (reject(p, col + 5, i0)) continue;
-                            ++hits;
-                        }
-                        reverse_state(p, col + 4, i1);
-                    }
-                    reverse_state(p, col + 3, i2);
-                }
-                reverse_state(p, col + 2, i3);
-            }
-            reverse_state(p, col + 1, i4);
-        }
-        reverse_state(p, col, i5);
-    }
-    return hits;
-}
-
-uint64_t backtrack(const State* p, int32_t col, int32_t row) {
-    if (reject(p, col, row)) return 0;
-    if (accept(p, col)) return 1;
-    State pi = *p;
-    update_state(&pi, col, row);
-    if (queens - col == 7) {
-        return backtrack_unwind(&pi, col+1);
-    }
-    uint64_t hits = 0;
-    for (int32_t i = 0; i < queens; ++i) {
-        hits += backtrack(&pi, col + 1, i);
+    uint64_t available = queens_mask & ~(left | down | right);
+    while (available > 0) {
+        uint64_t trailing_zeros = __builtin_ctzll(available);
+        uint64_t flag = 1ULL << trailing_zeros;
+        available ^= flag;
+        hits += backtrack(row + 1, (left | flag) << 1U, down | flag, (right | flag) >> 1);
     }
     return hits;
 }
@@ -100,6 +30,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Invalid queens count. Number expected from 1 to 32.");
         return 2;
     }
+    queens_mask = (1ULL << queens) - 1ULL;
 
 //    given state P and partial candidate c:
 //    procedure backtrack(c):
@@ -112,16 +43,14 @@ int main(int argc, char **argv) {
 
     double wtime = omp_get_wtime();
     uint64_t hits = 0;
-    #pragma omp parallel for default(none) shared(queens) reduction(+:hits) schedule(dynamic) collapse(3)
+    #pragma omp parallel for default(none) shared(queens, queens_mask) reduction(+:hits) schedule(dynamic) collapse(2)
     for (int32_t i = 0; i < queens; ++i) {
         for (int32_t j = 0; j < queens; ++j) {
-            for (int32_t k = 0; k < queens; ++k) {
-                if (j >= i - 1 && j <= i + 1) continue;
-                State p = {0};
-                update_state(&p, 0, i);
-                update_state(&p, 1, j);
-                hits += backtrack(&p, 2, k);
-            }
+            if (j >= i - 1 && j <= i + 1) continue;
+            uint64_t down = (1ULL << i) | (1ULL << j);
+            uint64_t left = queens_mask & ((1ULL << (i+2)) | (1ULL << (j+1)));
+            uint64_t right = queens_mask & ((1ULL << (i-2)) | (1ULL << (j-1)));
+            hits += backtrack(2, left, down, right);
         }
     }
     wtime = omp_get_wtime() - wtime;

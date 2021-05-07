@@ -1,10 +1,11 @@
 #include <omp.h>
 //#include <boost/lockfree/queue.hpp>
 #include <atomic>
+#include <chrono>
 #include <functional>
-//#include <iostream>
+#include <iostream>
 #include <queue>
-#include <vector>
+#include <thread>
 
 template <typename TWork, bool acceptedHaveNoChildren=true>
 class SearchSpaceBase {
@@ -67,7 +68,6 @@ struct Work {
     uint64_t diag_ur;
     uint64_t diag_ul;
     uint32_t rows;
-    uint32_t cols;
     uint32_t row, col;
 };
 
@@ -78,7 +78,6 @@ class NQueensBacktracker: public BacktrackerBase<Work> {
 protected:
     void update_work(Work& work) const override {
         work.rows |= (1U << work.row);
-        work.cols |= (1U << work.col);
         work.diag_ur |= (1ULL << (work.row + work.col));
         work.diag_ul |= (1ULL << (work.row + queens - work.col));
         ++work.col;
@@ -99,7 +98,6 @@ protected:
         uint32_t diag_ur = work.row + work.col;
         uint32_t diag_ul = work.row + queens - work.col;
         uint32_t ret = (work.rows & (1U << work.row));
-        ret += (work.cols & (1U << work.col));
         ret += (work.diag_ul & (1ULL << diag_ul));
         ret += (work.diag_ur & (1ULL << diag_ur));
         return bool(ret);
@@ -115,27 +113,79 @@ public:
     [[nodiscard]] uint64_t hit_count() const { return hits; }
 };
 
+template <typename T>
+class StallingBacktracker: public BacktrackerBase<T> {
+    int _stall, _depth;
+protected:
+    void update_work(T& work) const override {
+        //std::this_thread::sleep_for (std::chrono::microseconds(_stall));
+        ++work;
+    }
+
+    bool dequeue_work(T& work) override {
+#pragma omp atomic
+        ++hits;
+        return BacktrackerBase<T>::dequeue_work(work);
+    }
+
+    void produce_children(T work) override {
+        for (int32_t i = 0; i < queens; ++i) {
+            enqueue_work(work);
+        }
+    }
+
+    [[nodiscard]] bool accept(const T& work) const override {
+        return work == _depth;
+    }
+
+    [[nodiscard]] bool reject(const T& work) const override {
+        return false;
+    }
+
+    [[nodiscard]] bool accepted(const T& work) override {
+        return false;
+    }
+
+public:
+    StallingBacktracker(int stall, T depth) : _stall(stall), _depth(depth), hits(0) {}
+    mutable int hits;
+
+    bool enqueue_work(T work) override {
+#pragma omp atomic
+        ++hits;
+        return BacktrackerBase<T>::enqueue_work(work);
+    }
+};
+
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "Invalid parameters. Usage: nqueens <queens>");
+        std::cerr << "Invalid parameters. Usage: nqueens <queens>" << std::endl;
         return 1;
     }
     queens = std::strtoul(argv[1], nullptr, 10);
     if (queens <= 0 || queens > 32) {
-        fprintf(stderr, "Invalid queens count. Number expected from 1 to 32.");
+        std::cerr << "Invalid queens count. Number expected from 1 to 32." << std::endl;
         return 2;
     }
 
-    double wtime = omp_get_wtime();
+//    NQueensBacktracker tracker;
+//    Work work = {0};
+//    for (int32_t i = 0; i < queens; ++i) {
+//        work.row = i;
+//        tracker.enqueue_work(work);
+//    }
+//    tracker.run();
 
-    NQueensBacktracker tracker;
-    Work work = {0};
-    for (int32_t i = 0; i < queens; ++i) {
-        work.row = i;
-        tracker.enqueue_work(work);
+    for (int i = 1; i <= 64; i += 1) {
+        double wtime = omp_get_wtime();
+        omp_set_num_threads(i);
+        StallingBacktracker<__int128> tracker(i, 6);
+        tracker.enqueue_work(0);
+        tracker.run();
+        wtime = omp_get_wtime() - wtime;
+        //printf("Discovered %llu solutions in %f s.\n", (unsigned long long)tracker.hit_count(), wtime);
+        std::cout << i << " in " << wtime << " s. for " << tracker.hits << " gives " << (wtime / tracker.hits) << std::endl;
+        //break;
     }
-    tracker.run();
-    wtime = omp_get_wtime() - wtime;
-    printf("Discovered %llu solutions in %f s.\n", (unsigned long long)tracker.hit_count(), wtime);
     return 0;
 }
