@@ -30,3 +30,5 @@ any.cpp
 kmeans_extra.cpp
 kmeans_extra.h
 kmeans2.cpp
+cachegrind*
+callgrind*

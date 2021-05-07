@@ -1,5 +1,6 @@
 #include "kmean_serial.h"
 #include "kmeans_parallel.h"
+#include "rdtsc.h"
 
 using namespace std;
 
@@ -21,38 +22,47 @@ char print_arr(auto cluster_map, int k)
 }
 double run_serial(int k, int iterations,vector<v_float>& data, vector<v_float>& means_arr)
 {
-    auto start = std::chrono::high_resolution_clock::now();
+    
+    auto start = std::chrono::steady_clock::now();
+     unsigned long long a,b;
+
+    // a = rdtsc();
     int32_t * cluster_map = kmeans_serial::calculateMeans_serial(k, data, iterations, means_arr);
-    auto end = std::chrono::high_resolution_clock::now();
+    // b = rdtsc();
+    auto end =  std::chrono::steady_clock::now();
     std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
 
     std::cout << "serial time: " << time_span.count()*1e03<<setprecision(9) << " milli seconds.\n";
-    auto serial_timespan = time_span.count()*1e03;
+    auto timespan = time_span.count()*1e03;
     long sun =0;
     for(int i=0 ;i < k;i++)
         sun+=cluster_map[i];
-    sun == N ? cout << "correctness pass" : cout << "correctness fail, details: " << print_arr(cluster_map,k);
+    sun == N ? std::cout << "correctness pass" : std::cout << "correctness fail, details: " << print_arr(cluster_map,k);
 
-    return serial_timespan;
+    return timespan;
 }
 
 
-double run_parallel(int k, int iterations,vector<v_float>& data, vector<v_float>& means_arr)
+double run_parallel(int k, int iterations,vector<v_float>& data)
 {
-    auto start = chrono::high_resolution_clock::now();
-    auto cluster_map = kmeansparallel::calculateMeans_omp(k, data, iterations, means_arr);
-    auto end =chrono::high_resolution_clock::now();
+    auto start = std::chrono::steady_clock::now();
+    auto cluster_map = kmeansparallel::calculateMeans_omp(k, data, iterations);
+    auto end =std::chrono::steady_clock::now();
     chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
     cout << "parallel time: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
-    auto serial_timespan = time_span.count() * 1e03;
+    auto timespan = time_span.count() * 1e03;
 
     unsigned long long sun = 0;
     for (int i = 0; i < k; i++)
         sun += cluster_map[i];
     sun == N ? cout<< "correctness pass" : cout << "correctness fail, details: " << print_vect(cluster_map);
-    return serial_timespan;
+    return timespan;
 }
 int main(int argc, char **argv) {
+    
+
+//   printf("%llu\n", b-a);
+
     srand(time(0));
     if (argc != 4) {
         fprintf(stderr, "Invalid parameters. Usage: kmeans <clusters> <iterations> <input file>");
@@ -73,7 +83,7 @@ int main(int argc, char **argv) {
     struct FeatureDefinition fd = load_file(argv[3]);
     N = fd.npoints;
     M = fd.nfeatures;
-    int32_t* membership = (int*) memalign(AOCL_ALIGNMENT,fd.npoints*sizeof (int32_t));
+    // int32_t* membership = (int*) memalign(AOCL_ALIGNMENT,fd.npoints*sizeof (int32_t));
     ios_base::sync_with_stdio(false);
 
 
@@ -92,11 +102,11 @@ int main(int argc, char **argv) {
     int k =clusters;
     //int iterations = 5000;
     vector<v_float> means_arr(k, v_float(M,0));
-   // auto serial_timespan = run_serial(k,iterations,data,means_arr);
-    auto parallel_timespan = run_parallel(k,iterations,data,means_arr);
+   auto serial_timespan = run_serial(k,iterations,data,means_arr);
+    // auto parallel_timespan = run_parallel(k,iterations,data);
 
-    //harcoding serial time for other optimization runs
-    cout<<endl<<"Speed up: "<<218000/parallel_timespan<<endl;
+    // harcoding serial time for other optimization runs
+    // cout<<endl<<"Speed up: "<<218000/parallel_timespan<<endl;
 
     return 0;
 }

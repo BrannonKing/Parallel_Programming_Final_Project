@@ -60,6 +60,7 @@ struct FeatureDefinition load_file(char* filename) {
     return ret;
 }
 
+int p =0;
 /***
  * Calculate the distance of 2 points in M dimension plane, Euclidean distance
  * @param p1
@@ -68,14 +69,19 @@ struct FeatureDefinition load_file(char* filename) {
  */
 float calc_distance(v_float p1, vector<float> const p2, int M)
 {
+      auto start = std::chrono::steady_clock::now();
     float distance_sq_sum = 0;
 
 
     for (int ii = 0; ii < M; ii++)
         distance_sq_sum += ((p1[ii] - p2[ii])* (p1[ii] - p2[ii]));
-
-    return sqrtf(distance_sq_sum);
-
+        
+        auto end = std::chrono::steady_clock::now();
+        chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
+        if(p==0)
+            cout << "Time of calculating distance: \t: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
+         p=1;
+    return sqrtf(distance_sq_sum);       
 }
 
 /***

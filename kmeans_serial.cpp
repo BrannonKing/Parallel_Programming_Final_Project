@@ -13,20 +13,25 @@ namespace kmeans_serial {
 //    srand(43);
         static std::random_device seed;
         static std::mt19937 random_number_generator(seed());
+        auto start = std::chrono::steady_clock::now();
         std::uniform_int_distribution<size_t> indices(0, N - 1);
         for (auto &cluster : means_array) {
             cluster = data_array[indices(random_number_generator)];
         }
+        auto end = std::chrono::steady_clock::now();
+        chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
+        cout << "Time of initializing centroid: \t: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
 
     }
-
+int u=0;
 /***
  * Update the k centroids of M feature
  * @param N : no of elements in this cluster
  * @param means_row: the centroid ?
  * @param data_row: the single point ?
  */
-    void update_mean(int N, vector<float> &means_row, v_float data_row) {
+    void update_mean(long N, vector<float> &means_row, v_float data_row) {
+         auto start = std::chrono::steady_clock::now();
         if (N < 0) {
             cout << "N is less than zero error";
             exit(5);
@@ -39,6 +44,12 @@ namespace kmeans_serial {
             m = m / N;
             means_row[i] = m;
         }
+
+          auto end = std::chrono::steady_clock::now();
+        chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
+        if(u==0)
+        cout << "Time of updating centroid: \t: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
+        u=1;
     }
 
     void update_old_cluster_mean(int old_size, vector<float> &means_row, v_float data_row) {
@@ -56,7 +67,7 @@ namespace kmeans_serial {
         }
     }
 
-
+int s = 0;
 /***
  * For each point having M dimensions/features
  * Calculate
@@ -66,6 +77,8 @@ namespace kmeans_serial {
  * @return
  */
     int classify(v_float distances, int k) {
+         auto start = std::chrono::steady_clock::now();
+      
         float min = INT32_MAX;
         long index = -1;
 
@@ -79,7 +92,12 @@ namespace kmeans_serial {
                 index = i;
             }
         }
-
+        
+        auto end = std::chrono::steady_clock::now();
+        chrono::duration<double> time_span = std::chrono::duration_cast<chrono::duration<double>>(end - start);
+        if(s==0)
+            cout << "Time of classifying single point: \t: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
+        s = 1;
         return index;
     }
 
@@ -110,6 +128,8 @@ namespace kmeans_serial {
 
         // for each point
         for (int j = 0; j < iteration; j++) {
+        memset(membership, -1, N * sizeof(int32_t));
+        memset(cluster_size, 0, k * sizeof(int32_t));
             for (int ii = 0; ii < N; ii++) {
                 v_float dist(k, 0);
 
@@ -121,20 +141,13 @@ namespace kmeans_serial {
                     float d = calc_distance(item_row, means_array[i], M);
                     dist[i] = d;
                 }
+                
                 int index = classify(dist, k);
-                if (index != membership[ii]) {
-                    oldmean = means_array;
-                    if (cluster_size[membership[ii]] > 0) {
-                        int old_cluster = membership[ii];
-                        int old_cluster_size = cluster_size[old_cluster];
-                        update_old_cluster_mean(old_cluster_size, means_array[old_cluster], item_row);
-                        cluster_size[membership[ii]] -= 1; // decrement count from previous
-                    }
-                    membership[ii] = index; // update membership mapping
-                    cluster_size[index] += 1; // increament count in new cluster
-                    int csize = cluster_size[index];
-                    update_mean(csize, means_array[index], item_row);
-                }
+                membership[ii] = index;
+                long csize = ++cluster_size[index];
+               
+                update_mean(csize, means_array[index], item_row);
+                
             }
         }
 //    while( !isClose(oldmean,means_array,k,0.001));

@@ -27,13 +27,13 @@ typedef struct centroid_data centroid_data;
 
     }
 
-    void init_means(short k, vector<v_float> &means_array, vector<v_float> data_array) {
+    void init_means(vector<v_float> &means_array, vector<v_float> data_array) {
 //    srand(43);
         static std::random_device seed;
         static std::mt19937 random_number_generator(seed());
         std::uniform_int_distribution<size_t> indices(0, N - 1);
-        int i;
-//        #pragma omp for simd private(i)
+        size_t i;
+       #pragma omp parallel for simd
         for (i=0;i<means_array.size();i++) {
             means_array[i] = data_array[indices(random_number_generator)];
         }
@@ -109,12 +109,12 @@ typedef struct centroid_data centroid_data;
  * @param k
  * @return
  */
-    int classify(v_float distances, int k) {
+    int classify(v_float distances) {
         float min = INT32_MAX;
         long index = -1;
 
         // for each centroid
-        for (int i = 0; i < distances.size(); i++) {
+        for (size_t i = 0; i < distances.size(); i++) {
 
             // calculate distance
             float dist_temp = distances[i];
@@ -156,7 +156,7 @@ typedef struct centroid_data centroid_data;
 
 // dim = no of features
 
-    vector<int32_t>  calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array) {
+    vector<int32_t>  calculateMeans_omp(int k, vector<v_float> data_array, long iteration) {
         cout << endl<<"k: " << k << endl;
         cout << "iterations " << iteration << endl;
         // initialize means to random points , means array = dim x K
@@ -174,7 +174,7 @@ typedef struct centroid_data centroid_data;
 
 
 //    vector<v_float> oldmean(k);
-           int j,ii,i;
+           int j,ii,kk;
         // for each point
             if(omp_get_thread_num() == 0)
                 cout<<"no of threads: "<<omp_get_num_threads()<<endl;
@@ -183,54 +183,67 @@ typedef struct centroid_data centroid_data;
             memset(membership, -1, N *sizeof(int32_t));
             // std::fill(membership.begin(),membership.end(),v_float(M,-1));
             std::fill(cluster_size.begin(),cluster_size.end(),0);
+            // cout<<"debug1"<<endl;
 
              #pragma omp parallel for schedule(static) \
              shared(data_array,membership,cluster_size,centroids)\
-            private(ii,j,i)
+            private(ii,j,kk)
             //for each point
             for (ii = 0; ii < N; ii++) {
-
+// cout<<"debug12";
                 priority_queue<mem_point, std::vector<mem_point>, custom_cmpr> priority_q;
                 // v_float dist(k, 0.0);
-
+                // cout<<"debug2";
                 auto item_row = data_array[ii];
                 // for this point -> calculate distance between each k cmembershipentroid
-                for (i = 0; i < k; i++) {
+                for (kk = 0; kk < k; kk++) {
                     float distance_sq_sum = 0.0;
 //                    int ii;
                      #pragma omp simd
                     for (int jj = 0; jj < M; jj++)
                     {
-                        float s = centroids[i][jj] - data_array[i][jj];
+                        // cout<<"debug3";
+                        float s = centroids[kk][jj] - data_array[kk][jj];
                         distance_sq_sum += s*s;
                         // dist[i] = distance_sq_sum;
                         
                     }  
+                    // cout<<"debug4";
                         mem_point p;
                         p.distance = distance_sq_sum;
-                        p.centroid = i;
+                        p.centroid = kk;
                         priority_q.push(p);
                 }
 
                 // this point (ii) belongs to p[i].top() centroid
                     int index = priority_q.top().centroid;
+                    // cout<<"debug5";
                     membership[ii] = index;
             }
 
+            int yy;
             // int sum = 0;
-#pragma omp parallel for shared(membership,centroids,cluster_size,data_array,M,N,k) default(none) schedule(static)
+#pragma omp parallel for private(yy) shared(membership,centroids,cluster_size,data_array,M,N,k) default(none) schedule(static)
             for (int jj = 0; jj < k ; ++jj) {
                 for (int io = 0; io < N; ++io) {
                     if (membership[io] != jj) continue;
                     ++cluster_size[jj];
                     //update centroi
-
-                    for(int yy=0;yy<M;yy++) {
+                    // #pragma omp simd
+                    for( yy=0;yy<M;yy++) 
+                    {
                         centroids[jj][yy] += data_array[io][yy];
+                    }
+                
+                }
+
+                // #pragma  omp simd
+                for( yy=0;yy<M;yy++) {
+
                         if(cluster_size[jj] >0)
                             centroids[jj][yy] /= cluster_size[jj];
                     }
-                }
+                
             }
 
 //            for (int c = 0; c < k; ++c){

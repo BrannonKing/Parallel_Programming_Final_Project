@@ -37,10 +37,7 @@ namespace kmeansparallel {
            }
         //    this->count =0;
         }
-        void push(centroid_data& newcentroid)
-        {
-
-        }
+      
 
         void push(v_float point, int size)
         {
@@ -73,6 +70,6 @@ namespace kmeansparallel {
             }
         }
     };
-    vector<int> calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array);
+    vector<int> calculateMeans_omp(int k, vector<v_float> data_array, long iteration);
 }
 #endif //CS5234_FINAL_PROJECT_KMEANS_PARALLEL_H
