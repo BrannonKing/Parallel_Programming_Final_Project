@@ -66,6 +66,6 @@ namespace kmeansparallel {
             }
         }
     };
-    vector<centroid_data> calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array);
+    int32_t*  calculateMeans_omp(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array);
 }
 #endif //CS5234_FINAL_PROJECT_KMEANS_PARALLEL_H

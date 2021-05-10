@@ -1,8 +1,15 @@
+execute_process(
+	COMMAND bash "-c" "gcc -march=native -Q --help=target | grep -- '-march=' | cut -f3"
+    OUTPUT_VARIABLE FOO
+)
+message(STATUS "GCC native architecture detected: ${FOO}")
 cmake_minimum_required(VERSION 3.10)
 project(CS5234_Final_Project LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
+
+set(CMAKE_CXX_FLAGS "-O3 -mprefer-vector-width=256 -fvect-cost-model=cheap  -march=skylake-avx512 -Wall -Wextra -march=native")
 
 find_package(OpenMP REQUIRED)
 if (OpenMP_FOUND)
