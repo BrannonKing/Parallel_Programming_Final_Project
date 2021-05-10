@@ -89,7 +89,7 @@ namespace kmeans_serial
     {
         auto start = std::chrono::steady_clock::now();
 
-        float min = INT32_MAX;
+        float min = INFINITY;
         long index = -1;
 
         // for each centroid
@@ -155,19 +155,19 @@ namespace kmeans_serial
                 for ( i = 0; i < k; i++)
                 {
                     // calculate distance between each k centroid
-                    float distance_sq_sum=0;
+                    float distance_sq_sum=0.0;
                     #pragma omp simd
                      for ( jj = 0; jj < M; jj++)
-                         distance_sq_sum += ((item_row[ii] - means_array[i][ii])* (item_row[ii] - means_array[i][ii]));
+                         distance_sq_sum += ((item_row[jj] - means_array[i][jj])* (item_row[jj] - means_array[i][jj]));
                     //  d = calc_distance(item_row, means_array[i], M);
                     dist[i] = distance_sq_sum;
                 }
-
+#pragma omp critical
+                {
                 int index = classify(dist, k);
                 membership[ii] = index;
                 long csize = ++cluster_size[index];
-
-                update_mean(csize, means_array[index], item_row);
+update_mean(csize, means_array[index], item_row);}
             }
         }
         //    while( !isClose(oldmean,means_array,k,0.001));
