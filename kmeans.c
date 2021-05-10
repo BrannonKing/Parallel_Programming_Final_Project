@@ -69,30 +69,72 @@ int isClose(float *restrict centroids, float *restrict old_centroids, int n, int
 }
 
 void update_centroids(const int *restrict labels, const float *restrict features, int N, int F, int *labelCounts, float *centroids, int K){
-    // should make it faster but it doesn't:
-    //#pragma omp target teams distribute parallel for map(to: labels[0:N]), map(from: labelCounts[0:K], centroids[0:K*F])
+    memset(centroids, 0, K * F * sizeof(float));
+    memset(labelCounts, 0, sizeof(int) * K);
+
+    for (int i = 0; i < N; ++i) {
+        int k = labels[i];
+        labelCounts[k] += 1;
+        #pragma omp simd
+        for (int j = 0; j < F; ++j) {
+            centroids[k * F + j] += features[i * F + j];
+        }
+    }
     for (int k = 0; k < K; ++k) {
+        float count = (float) (labelCounts[k]);
+        if (count <= 0) continue;
+        #pragma omp simd
         for (int j = 0; j < F; ++j) {
-            centroids[k * F + j] = 0;
-        }
-        int counter = 0;
-        for (int n = 0; n < N; ++n) {
-            if (labels[n] != k) continue;
-            ++counter;
-            for (int j = 0; j < F; ++j) {
-                centroids[k * F + j] += features[n * F + j];
-            }
-        }
-        labelCounts[k] = counter;
-        if (counter <= 0) continue;
-        for (int j = 0; j < F; ++j) {
-            centroids[k * F + j] /= (float)counter;
+            centroids[k * F + j] /= count;
         }
     }
 }
 
+/*
+void update_centroids_fast(const int *restrict labels, const float *restrict features, int N, int F, int *labelCounts, float *centroids, int K){
+    memset(centroids, 0, k * fd->nfeatures * sizeof(float));
+    memset(labelCounts, 0, sizeof(int) * k);
+
+//#pragma omp parallel
+    {
+        int *localCounts = (int *) calloc(k, sizeof(int));
+        float *localCentroids = (float *) calloc(k * fd->nfeatures, sizeof(float));
+//#pragma omp for
+        for (int i = 0; i < fd->npoints; ++i) {
+            int c = labels[i];
+            localCounts[c] += 1;
+#pragma omp simd
+            for (int j = 0; j < fd->nfeatures; ++j) {
+                localCentroids[c * fd->nfeatures + j] += fd->features[i][j];
+            }
+        }
+//#pragma omp critical
+        {
+            for (int c = 0; c < k; ++c) {
+                labelCounts[c] += localCounts[c];
+#pragma omp simd
+                for (int j = 0; j < fd->nfeatures; ++j) {
+                    centroids[c * fd->nfeatures + j] += localCentroids[c * fd->nfeatures + j];
+                }
+            }
+        }
+        free(localCounts);
+        free(localCentroids);
+    }
+    for (int c = 0; c < k; ++c) {
+        float count = (float) (labelCounts[c]);
+        if (count <= 0) continue;
+#pragma omp simd
+        for (int j = 0; j < fd->nfeatures; ++j) {
+            centroids[c * fd->nfeatures + j] /= count;
+        }
+    }
+}
+*/
 void update_labels(int *labels, const float *restrict features, int N, int F, const float *restrict centroids, int K) {
-    #pragma omp target teams distribute parallel for map(to: centroids[0:K*F]), map(from: labels[0:N])
+    #pragma omp target teams distribute parallel for simd \
+        map(to: centroids[0:K*F]), map(from: labels[0:N])
+
     //#pragma omp target teams distribute parallel for \
     //    map(to: N, F, K, features[0:N*F], centroids[0:K*F]), map(from: labels[0:N])
     for (int n = 0; n < N; ++n) { // each point
@@ -160,7 +202,7 @@ int main(int argc, char **argv) {
     double start = omp_get_wtime();
     int iterations = 0;
 
-    #pragma omp target data map(to: F, N, K, features[0:F*N])
+    #pragma omp target data map(to: features[0:F*N])
         //, map(alloc: labels[0:N]), \
         //map(tofrom: centroids[0:K*F]), map(from: labelCounts[0:K])
     while (++iterations < max_iterations) {
