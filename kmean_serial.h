@@ -11,6 +11,12 @@
 using namespace std;
 
 namespace kmeans_serial {
-    int32_t *calculateMeans_serial(int k, vector<v_float> data_array, long iteration, vector<v_float> &means_array);
+      void calculateMeans_serial(
+        int k,
+        vector<v_float> const &data_array,
+        long iteration,
+        vector<v_float>& means_array,
+        vector<int32_t>& membership,
+        vector<int32_t>& cluster_size);
 }
 #endif //CS5234_FINAL_PROJECT_KMEAN_SERIAL_H

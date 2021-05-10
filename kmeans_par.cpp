@@ -41,6 +41,7 @@ namespace kmeans_serial
             exit(5);
         }
         // update mean for each feature
+        #pragma omp simd
         for (int i = 0; i < M; i++)
         {
             float m = means_row[i];
@@ -141,18 +142,25 @@ namespace kmeans_serial
         {
             std::fill(membership.begin(), membership.end(), -1);
             std::fill(cluster_size.begin(), cluster_size.end(), 0);
-            for (int ii = 0; ii < N; ii++)
+            int ii,i,jj;
+            #pragma omp parallel for schedule(static)\
+            shared(data_array, membership, cluster_size, means_array) private(ii, i,jj)
+            for ( ii = 0; ii < N; ii++)
             {
                 v_float dist(k, 0);
 
                 auto item_row = data_array[ii];
 
                 // classify this point return the value from 0->k
-                for (int i = 0; i < k; i++)
+                for ( i = 0; i < k; i++)
                 {
                     // calculate distance between each k centroid
-                    float d = calc_distance(item_row, means_array[i], M);
-                    dist[i] = d;
+                    float distance_sq_sum=0;
+                    #pragma omp simd
+                     for ( jj = 0; jj < M; jj++)
+                         distance_sq_sum += ((item_row[ii] - means_array[i][ii])* (item_row[ii] - means_array[i][ii]));
+                    //  d = calc_distance(item_row, means_array[i], M);
+                    dist[i] = distance_sq_sum;
                 }
 
                 int index = classify(dist, k);
@@ -162,6 +170,8 @@ namespace kmeans_serial
                 update_mean(csize, means_array[index], item_row);
             }
         }
-        //    while( !isClose(oldmean,means_array,k,0.001));    
+        //    while( !isClose(oldmean,means_array,k,0.001));
+
+      
     }
 }
