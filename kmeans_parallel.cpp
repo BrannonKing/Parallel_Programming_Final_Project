@@ -214,10 +214,9 @@ typedef struct centroid_data centroid_data;
                         p.centroid = kk;
                         priority_q.push(p);
                 }
-
-                // this point (ii) belongs to p[i].top() centroid
+                 
                     int index = priority_q.top().centroid;
-                    // cout<<"debug5";
+      
                     membership[ii] = index;
             }
 
@@ -237,7 +236,6 @@ typedef struct centroid_data centroid_data;
                 
                 }
 
-                // #pragma  omp simd
                 for( yy=0;yy<M;yy++) {
 
                         if(cluster_size[jj] >0)
@@ -246,25 +244,7 @@ typedef struct centroid_data centroid_data;
                 
             }
 
-//            for (int c = 0; c < k; ++c){
-//                if (cluster_size[c] <= 0) continue;
-//                for (int j = 0; j < M ;++j) {
-//                    centroids[c][j] /= cluster_size[c];
-//                }
-//            }
-
-
-            // for(int i=0;i<M;i++)
-            // {
-            //     for(int j=0;i<k;j++)
-            //     {
-            //         centroids[k].membership[i] = 
-            //     }
-            // }
-//            sum == N ? cout<<endl<<"iteration ok" : cout<<endl<<"iteration: "<<j<<" "<<endl<<print_arr(centroids,k);
         }
-            
-//    while( !isClose(oldmean,means_array,k,0.001));
 
         return cluster_size;
     }

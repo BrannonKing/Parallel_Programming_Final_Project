@@ -56,6 +56,8 @@ double run_parallel(int k, int iterations,vector<v_float>& data)
     for (int i = 0; i < k; i++)
         sun += cluster_map[i];
     sun == N ? cout<< "correctness pass" : cout << "correctness fail, details: " << print_vect(cluster_map);
+    
+    print_vect(cluster_map);
     return timespan;
 }
 int main(int argc, char **argv) {
@@ -102,8 +104,8 @@ int main(int argc, char **argv) {
     int k =clusters;
     //int iterations = 5000;
     vector<v_float> means_arr(k, v_float(M,0));
-   auto serial_timespan = run_serial(k,iterations,data,means_arr);
-    // auto parallel_timespan = run_parallel(k,iterations,data);
+//    auto serial_timespan = run_serial(k,iterations,data,means_arr);
+    auto parallel_timespan = run_parallel(k,iterations,data);
 
     // harcoding serial time for other optimization runs
     // cout<<endl<<"Speed up: "<<218000/parallel_timespan<<endl;
