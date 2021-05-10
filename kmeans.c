@@ -101,33 +101,45 @@ void update_centroids(const int *restrict labels, FeatureDefinition* fd, int *la
     }
 }
 
-void update_centroids_locked(const int *restrict labels, FeatureDefinition* fd, int *labelCounts, float *centroids, int n, omp_lock_t* locks){
-    memset(centroids, 0, n * fd->nfeatures * sizeof(float));
-    memset(labelCounts, 0, sizeof(int) * n);
+void update_centroids_locked(const int *restrict labels, FeatureDefinition* fd, int *labelCounts, float *centroids, int k, omp_lock_t* locks){
+    memset(centroids, 0, k * fd->nfeatures * sizeof(float));
+    memset(labelCounts, 0, sizeof(int) * k);
 
-    #pragma omp parallel for
-    for (int i = 0; i < fd->npoints; ++i) {
-        int c = labels[i];
-//#pragma omp atomic
-        omp_set_lock(&locks[c]);
-        labelCounts[c] += 1;
-#pragma omp simd
-        for (int j = 0; j < fd->nfeatures; ++j) {
-            float value = fd->features[i][j];
-            int index = c * fd->nfeatures + j;
-//#pragma omp atomic
-            centroids[index] += value;
+    #pragma omp parallel
+    {
+        int *localCounts = (int *) calloc(k, sizeof(int));
+        float *localCentroids = (float *) calloc(k * fd->nfeatures, sizeof(float));
+        #pragma omp for
+        for (int i = 0; i < fd->npoints; ++i) {
+            int c = labels[i];
+            localCounts[c] += 1;
+            #pragma omp simd
+            for (int j = 0; j < fd->nfeatures; ++j) {
+                localCentroids[c * fd->nfeatures + j] += fd->features[i][j];
+            }
         }
-        omp_unset_lock(&locks[c]);
+        #pragma omp critical
+        {
+            for (int c = 0; c < k; ++c) {
+                labelCounts[c] += localCounts[c];
+                #pragma omp simd
+                for (int j = 0; j < fd->nfeatures; ++j) {
+                    centroids[c * fd->nfeatures + j] += localCentroids[c * fd->nfeatures + j];
+                }
+            }
+        }
+        free(localCounts);
+        free(localCentroids);
     }
-    for (int c = 0; c < n; ++c) {
-        float count = (float)(labelCounts[c]);
+    for (int c = 0; c < k; ++c) {
+        float count = (float) (labelCounts[c]);
         if (count <= 0) continue;
-        #pragma omp simd
+#pragma omp simd
         for (int j = 0; j < fd->nfeatures; ++j) {
             centroids[c * fd->nfeatures + j] /= count;
         }
     }
+
 }
 
 void update_labels(int *labels, FeatureDefinition* fd, const float *restrict centroids, int n) {
@@ -191,9 +203,9 @@ int main(int argc, char **argv) {
     int* labelCounts = (int*)malloc(sizeof(int) * k);
 
     omp_lock_t* locks = (omp_lock_t*)calloc(k, sizeof(omp_lock_t));
-    for (int i = 0; i < k; ++i) {
-        omp_init_lock(&locks[i]);
-    }
+//    for (int i = 0; i < k; ++i) {
+//        omp_init_lock_with_hint(&locks[i], omp_lock_hint_speculative);
+//    }
 
     printf("Starting computation...\n");
     double start = omp_get_wtime();
@@ -213,9 +225,9 @@ int main(int argc, char **argv) {
         printf("\n");
     }
 
-    for (int i = 0; i < k; ++i) {
-        omp_destroy_lock(&locks[i]);
-    }
+//    for (int i = 0; i < k; ++i) {
+//        omp_destroy_lock(&locks[i]);
+//    }
 
     return 0;
 }
