@@ -1,4 +1,5 @@
 #include "kmean_serial.h"
+#include "omp.h"
 //long N;
 //long M;
 
@@ -131,11 +132,11 @@ namespace kmeans_serial
         long iteration,
         vector<v_float> &means_array,
         vector<int32_t>& membership,
-        vector<int32_t>& cluster_size)
+        vector<int32_t>& cluster_size, int num_threads)
     {
 
         init_means(k, means_array, data_array);
-
+        // omp_set_num_threads(num_threads);
         int ii,i;
         // for each point
         for (int j = 0; j < iteration; j++)
@@ -162,10 +163,11 @@ namespace kmeans_serial
                     //  d = calc_distance(item_row, means_array[i], M);
                     dist[i] = distance_sq_sum;
                 }
-#pragma omp critical
-                {
+
                 int index = classify(dist, k);
                 membership[ii] = index;
+                #pragma omp critical
+                {
                 long csize = ++cluster_size[index];
 update_mean(csize, means_array[index], item_row);}
             }

@@ -20,32 +20,6 @@ char print_arr(auto cluster_map, int k)
 
     return '\n';
 }
-double run_serial(int k, int iterations, vector<v_float> const &data)
-{
-        cout << endl
-             << "Serial run k: " << k << endl
-        << "iterations " << iterations  << endl;
-     vector<int32_t> cluster_map(k,0);
-       vector<v_float> centroids(k, v_float(M, 0));
-        vector<int32_t> membership(N,-1);
-           unsigned long long a, b;
-    auto start = std::chrono::steady_clock::now();
- 
-    kmeans_serial::calculateMeans_serial(k, data, iterations, centroids,membership,cluster_map);
-    // b = rdtsc();
-    auto end = std::chrono::steady_clock::now();
-    
-    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-
-    std::cout << "serial time: " << time_span.count() * 1e03 << setprecision(9) << " milli seconds.\n";
-    auto timespan = time_span.count() * 1e03;
-    long sun = 0;
-    for (int i = 0; i < k; i++)
-        sun += cluster_map[i];
-    sun == N ? std::cout << "correctness pass" : std::cout << "correctness fail, details: " << print_arr(cluster_map, k);
-    print_vect(cluster_map);
-    return timespan;
-}
 
 double run_parallel(int k, int iterations, vector<v_float> &data, int num_threads)
 {
@@ -58,7 +32,7 @@ double run_parallel(int k, int iterations, vector<v_float> &data, int num_thread
     
     auto start = std::chrono::steady_clock::now();       
     
-    kmeansparallel::calculateMeans_omp(k, data, iterations, num_threads,cluster_map,membership,centroids);
+    kmeans_serial::calculateMeans_serial(k, data, iterations,centroids,membership,cluster_map,num_threads);
     
     auto end = std::chrono::steady_clock::now();
 
@@ -125,8 +99,8 @@ int main(int argc, char **argv)
     int k = clusters;
     //int iterations = 5000;
 
-      auto serial_timespan = run_serial(k,iterations,data);
-    // auto parallel_timespan = run_parallel(k, iterations, data, num_threads);
+    //   auto serial_timespan = run_serial(k,iterations,data,num);
+    auto parallel_timespan = run_parallel(k, iterations, data, num_threads);
 
     // harcoding serial time for other optimization runs
     // cout << endl

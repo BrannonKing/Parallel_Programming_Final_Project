@@ -17,6 +17,6 @@ namespace kmeans_serial {
         long iteration,
         vector<v_float>& means_array,
         vector<int32_t>& membership,
-        vector<int32_t>& cluster_size);
+        vector<int32_t>& cluster_size, int num_threads);
 }
 #endif //CS5234_FINAL_PROJECT_KMEAN_SERIAL_H
