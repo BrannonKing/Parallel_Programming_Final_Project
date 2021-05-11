@@ -295,7 +295,8 @@ void Nqueen(int board_size)
             {
                 /* We have no more rows to process; we found a solution. */
                 /* Comment out the call to printtable in order to print the solutions as board position*/
-                /* printtable(board_size, aQueenBitRes, g_numsolutions + 1);  */
+                if (0)
+                    printtable(board_size, aQueenBitRes, g_numsolutions + 1);
                 ++g_numsolutions;
                 bitfield = *--pnStack;
                 --numrows;

@@ -14,13 +14,21 @@ endif()
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopt-info-all=vectorizations.txt") # print out optimized loops in txt file
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-all=vectorizations.txt")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopt-info-all=vectorizations.txt") # print out optimized loops in txt file
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-all=vectorizations.txt")
 
-#set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+# for testing the vector widths:
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mprefer-vector-width=512 -fvect-cost-model=cheap -Wall -Wextra")
 
 add_executable(kmeans kmeans.c)
-target_link_libraries(kmeans PRIVATE m)
 add_executable(nqueens_branch nqueens_branch.cpp)
 add_executable(nqueens_backtrack nqueens_backtrack.c)
 add_executable(nqueens_somers nqueens_somers.c)
+
+# NOTES for this to work (assuming nVidia CUDA target):
+# it requires nvptx to be installed: sudo apt install gcc-offload-nvptx
+# or if using gcc-10: sudo apt install gcc-10-offload-nvptx
+add_executable(kmeans_targeted kmeans_targeted.c)
+target_compile_options(kmeans_targeted PUBLIC $<$<CXX_COMPILER_ID:GNU>:-fcf-protection=none -fno-stack-protector>)
+target_link_options(kmeans_targeted PUBLIC $<$<CXX_COMPILER_ID:GNU>:-foffload=nvptx-none=\"-misa=sm_35\">)
+# TODO: target_compile_options wasn't working like setting the C_FLAGS directly

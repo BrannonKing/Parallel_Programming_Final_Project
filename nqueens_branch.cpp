@@ -183,9 +183,7 @@ int main(int argc, char **argv) {
         tracker.enqueue_work(0);
         tracker.run();
         wtime = omp_get_wtime() - wtime;
-        //printf("Discovered %llu solutions in %f s.\n", (unsigned long long)tracker.hit_count(), wtime);
         std::cout << i << " in " << wtime << " s. for " << tracker.hits << " gives " << (wtime / tracker.hits) << std::endl;
-        //break;
     }
     return 0;
 }
