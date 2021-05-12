@@ -18,11 +18,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-mat
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-all=vectorizations.txt")
 
 # for testing the vector widths:
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mprefer-vector-width=512 -fvect-cost-model=cheap -Wall -Wextra")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mprefer-vector-width=512 -fvect-cost-model=cheap -Wall -Wextra")
 
 add_executable(kmeans kmeans.c)
 add_executable(nqueens_branch nqueens_branch.cpp)
 add_executable(nqueens_backtrack nqueens_backtrack.c)
+target_compile_options(nqueens_backtrack PUBLIC $<$<CXX_COMPILER_ID:GNU>:-fcf-protection=none -fno-stack-protector>)
+target_link_options(nqueens_backtrack PUBLIC $<$<CXX_COMPILER_ID:GNU>:-foffload=nvptx-none=\"-misa=sm_35\">)
+
+
 add_executable(nqueens_somers nqueens_somers.c)
 
 # NOTES for this to work (assuming nVidia CUDA target):
