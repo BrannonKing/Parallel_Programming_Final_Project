@@ -16,5 +16,8 @@ For n-queens with board size 16x16 using all available threads:
 To limit the thread-count to 8:
 OMP_NUM_THREADS=8 ./nqueens 16
 
+To analyize the cache usage, use a command similar to this:
+perf stat -e cache-misses,cache-references,l2_lines_in.all,l1d.replacement,fp_arith_inst_retired.128b_packed_double,fp_arith_inst_retired.128b_packed_single,fp_arith_inst_retired.256b_packed_double,fp_arith_inst_retired.256b_packed_single,fp_arith_inst_retired.512b_packed_double,fp_arith_inst_retired.512b_packed_single,l1d.replacement,branch-misses,branch ./kmeans 5 5 ~/project/OpenDwarfs-master/test/dense-linear-algebra/kmeans/819200.txt
+
 Code in this repository is written by Brannon King with feedback on k-means from Ayush Chaturvedi.
 Exceptions to this are Jeff Somers N-queens implementation and the file loading code taken from OpenDwarfs.
