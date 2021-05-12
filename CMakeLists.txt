@@ -14,7 +14,7 @@ endif()
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native -ffast-math" )
 
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopt-info-all=vectorizations.txt") # print out optimized loops in txt file
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopt-info-all=vectorizations.txt") # print out optimized loops in txt file
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopt-info-all=vectorizations.txt")
 
 # for testing the vector widths:
@@ -31,4 +31,3 @@ add_executable(nqueens_somers nqueens_somers.c)
 add_executable(kmeans_targeted kmeans_targeted.c)
 target_compile_options(kmeans_targeted PUBLIC $<$<CXX_COMPILER_ID:GNU>:-fcf-protection=none -fno-stack-protector>)
 target_link_options(kmeans_targeted PUBLIC $<$<CXX_COMPILER_ID:GNU>:-foffload=nvptx-none=\"-misa=sm_35\">)
-# TODO: target_compile_options wasn't working like setting the C_FLAGS directly
